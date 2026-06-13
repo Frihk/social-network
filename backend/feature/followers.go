@@ -1,7 +1,5 @@
 package feature
 
-package feature
-
 import (
 	"database/sql"
 	"encoding/json"

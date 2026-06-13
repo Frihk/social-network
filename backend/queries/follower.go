@@ -1,7 +1,5 @@
 package queries
 
-package queries
-
 import (
 	"database/sql"
 	"fmt"
