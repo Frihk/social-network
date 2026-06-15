@@ -1,0 +1,17 @@
+# uploads folder
+backend/uploads/
+
+# test database
+backend/test.db
+
+backend/go.mod
+backend/go.sum
+
+# frontend node modules
+frontend/node_modules/
+frontend/.next/
+
+frontend/jsconfig.json
+frontend/package.json
+frontend/package-lock.json
+
