@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"social/queries"
+	"social/models"
 )
 
 // FollowUserHandler handles POST /api/users/:id/follow
