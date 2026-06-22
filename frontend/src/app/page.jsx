@@ -1,61 +1,71 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import PostForm from "@/components/PostForm";
-import PostCard from "@/components/PostCard";
-import { getFeed } from "@/lib/posts";
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-export default function Home() {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export default function HomePage() {
+  const { user, logout, loading } = useAuth();
+  const router = useRouter();
 
-  const fetchPosts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getFeed();
-      setPosts(data || []);
-      setError(null);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load feed. Please try again later.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   return (
-    <main className="container">
-      <div style={{ marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "24px", fontWeight: "700" }}>Feed</h1>
+    <div className="min-h-screen bg-gray-100">
+      {/* Navbar */}
+      <nav className="bg-white shadow-md">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-blue-600">Social Network</h1>
+          <div className="flex items-center gap-4">
+            {user && (
+              <>
+                <Link
+                  href={`/profile/${user.id}`}
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  My Profile
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold mb-4">Welcome, {user?.first_name}!</h2>
+            <p className="text-gray-600">
+              This is your social network feed. Start by exploring profiles, creating posts,
+              and connecting with friends.
+            </p>
+          </div>
+
+          {/* Posts Section */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-bold mb-4">Recent Posts</h3>
+            <p className="text-gray-500">No posts yet. Be the first to post!</p>
+          </div>
+        </div>
       </div>
-      
-      <PostForm onPostCreated={fetchPosts} />
-      
-      {loading ? (
-        <div style={{ textAlign: "center", marginTop: "40px" }}>
-          <p style={{ color: "var(--text-secondary)" }}>Loading your feed...</p>
-        </div>
-      ) : error ? (
-        <div className="card" style={{ textAlign: "center", color: "#d32f2f" }}>
-          {error}
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: "40px" }}>
-          <h2 style={{ fontSize: "18px", marginBottom: "8px" }}>Your feed is empty</h2>
-          <p style={{ color: "var(--text-secondary)" }}>Follow some people or create your first post!</p>
-        </div>
-      ) : (
-        <div>
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
-      )}
-    </main>
+    </div>
   );
 }

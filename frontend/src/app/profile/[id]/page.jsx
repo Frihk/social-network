@@ -1,156 +1,155 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import {
-  getFollowers,
-  getFollowing,
-  followUser,
-  unfollowUser,
-  acceptFollow,
-  declineFollow,
-} from "@/lib/followers";
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { getUserProfile, updateProfilePrivacy } from '@/lib/auth';
 
 export default function ProfilePage() {
-  const { id: profileId } = useParams();
-  const { user: currentUser } = useAuth();
-  const isOwnProfile = currentUser && currentUser.id === parseInt(profileId);
-
-  const [followers, setFollowers] = useState([]);
-  const [following, setFollowing] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const { id } = useParams();
+  const { user } = useAuth();
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const isOwnProfile = user && user.id === id;
+
+  useEffect(() => {
+    loadProfile();
+  }, [id]);
+
+  const loadProfile = async () => {
     try {
-      const [followersData, followingData] = await Promise.all([
-        getFollowers(profileId),
-        getFollowing(profileId),
-      ]);
-
-      const acceptedFollowers = followersData?.filter((f) => f.status === "accepted") || [];
-      const pendingFollowers = followersData?.filter((f) => f.status === "pending") || [];
-
-      setFollowers(acceptedFollowers);
-      setFollowing(followingData || []);
-
-      if (isOwnProfile) {
-        setPendingRequests(pendingFollowers);
-      }
-
-      if (currentUser && !isOwnProfile) {
-        const myFollowing = await getFollowing(currentUser.id);
-        const followingProfile = myFollowing?.find(
-          (f) => f.following_id === parseInt(profileId)
-        );
-        setIsFollowing(!!followingProfile);
-      }
+      const data = await getUserProfile(id);
+      setProfile(data);
     } catch (err) {
-      console.error(err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [profileId, currentUser, isOwnProfile]);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const handlePrivacyToggle = async () => {
+    if (!isOwnProfile) return;
 
-  const handleFollowToggle = async () => {
+    setUpdatingPrivacy(true);
     try {
-      if (isFollowing) {
-        await unfollowUser(profileId);
-      } else {
-        await followUser(profileId);
-      }
-      fetchData();
+      await updateProfilePrivacy(id, !profile.is_private);
+      setProfile(prev => ({ ...prev, is_private: !prev.is_private }));
     } catch (err) {
-      console.error(err);
+      setError(err.message);
+    } finally {
+      setUpdatingPrivacy(false);
     }
   };
 
-  const handleRequest = async (requestId, action) => {
-    try {
-      if (action === "accept") {
-        await acceptFollow(requestId);
-      } else {
-        await declineFollow(requestId);
-      }
-      fetchData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading profile...</div>
+      </div>
+    );
+  }
 
-  if (loading) return <div className="container" style={{ textAlign: "center" }}><p>Loading profile...</p></div>;
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-500">{error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container">
-      <div className="card" style={{ padding: "40px", textAlign: "center", marginBottom: "24px" }}>
-        <div style={{ width: "120px", height: "120px", borderRadius: "50%", background: "#ddd", margin: "0 auto 16px" }} />
-        <h1 style={{ fontSize: "28px", fontWeight: "700" }}>User {profileId}</h1>
-        
-        {!isOwnProfile && currentUser && (
-          <div style={{ marginTop: "16px" }}>
-            <button 
-              onClick={handleFollowToggle}
-              className={isFollowing ? "btn-secondary" : "btn-primary"}
-              style={{ minWidth: "120px" }}
-            >
-              {isFollowing ? "Following" : "Follow"}
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="min-h-screen bg-gray-100 py-8">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          {/* Profile Header */}
+          <div className="flex items-start gap-6 mb-6">
+            <div className="w-24 h-24 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
+              {profile.avatar ? (
+                <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl text-gray-600">
+                  {profile.first_name?.[0]}{profile.last_name?.[0]}
+                </span>
+              )}
+            </div>
 
-      {isOwnProfile && pendingRequests.length > 0 && (
-        <div className="card" style={{ border: "1px solid #0866ff", background: "#f0f7ff" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Follow Requests</h2>
-          {pendingRequests.map((req) => (
-            <div key={req.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px", fontWeight: "600" }}>User {req.follower_id}</span>
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => handleRequest(req.id, "accept")} className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }}>Confirm</button>
-                <button onClick={() => handleRequest(req.id, "decline")} className="btn-secondary" style={{ padding: "4px 12px", fontSize: "13px" }}>Delete</button>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold mb-2">
+                {profile.first_name} {profile.last_name}
+              </h1>
+              {profile.nickname && (
+                <p className="text-gray-600 mb-2">@{profile.nickname}</p>
+              )}
+              {profile.about_me && (
+                <p className="text-gray-700 mb-4">{profile.about_me}</p>
+              )}
+
+              {isOwnProfile && (
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handlePrivacyToggle}
+                    disabled={updatingPrivacy}
+                    className={`px-4 py-2 rounded-lg ${
+                      profile.is_private
+                        ? 'bg-yellow-500 hover:bg-yellow-600'
+                        : 'bg-green-500 hover:bg-green-600'
+                    } text-white disabled:bg-gray-400`}
+                  >
+                    {updatingPrivacy
+                      ? 'Updating...'
+                      : profile.is_private
+                      ? '🔒 Private Profile'
+                      : '🌍 Public Profile'}
+                  </button>
+                </div>
+              )}
+
+              {!isOwnProfile && profile.is_private && (
+                <div className="text-yellow-600">
+                  🔒 This is a private profile
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* User Information */}
+          {profile.email && (
+            <div className="border-t pt-6">
+              <h2 className="text-xl font-bold mb-4">Information</h2>
+              <div className="space-y-2">
+                <div>
+                  <span className="font-semibold">Email:</span> {profile.email}
+                </div>
+                {profile.date_of_birth && (
+                  <div>
+                    <span className="font-semibold">Date of Birth:</span> {profile.date_of_birth}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <div className="card">
-          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Followers ({followers.length})</h3>
-          {followers.length === 0 ? (
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>No followers yet.</p>
-          ) : (
-            followers.map((f) => (
-              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px" }}>User {f.follower_id}</span>
-              </div>
-            ))
           )}
-        </div>
 
-        <div className="card">
-          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Following ({following.length})</h3>
-          {following.length === 0 ? (
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Not following anyone yet.</p>
-          ) : (
-            following.map((f) => (
-              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px" }}>User {f.following_id}</span>
+          {/* Posts Section */}
+          <div className="border-t pt-6 mt-6">
+            <h2 className="text-xl font-bold mb-4">Posts</h2>
+            <p className="text-gray-500">No posts yet</p>
+          </div>
+
+          {/* Followers Section */}
+          <div className="border-t pt-6 mt-6">
+            <h2 className="text-xl font-bold mb-4">Followers & Following</h2>
+            <div className="flex gap-8">
+              <div>
+                <span className="font-semibold">Followers:</span> 0
               </div>
-            ))
-          )}
+              <div>
+                <span className="font-semibold">Following:</span> 0
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
