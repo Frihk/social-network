@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useContext } from 'react';
-import { AuthContext } from '@/context/AuthContext';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import ChatWindow from '@/components/ChatWindow';
-import { getDMEligibleUsers } from '@/lib/chat';
-import { getUserGroups } from '@/lib/groups';
+import { AuthContext } from '../../context/AuthContext';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import ChatWindow from '../../components/ChatWindow';
+import { getDMEligibleUsers } from '../../lib/chat';
+import { getUserGroups } from '../../lib/groups';
 
 export default function ChatPage() {
   const { user } = useContext(AuthContext);
