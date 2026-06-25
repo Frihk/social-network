@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useContext } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { AuthContext } from '../context/AuthContext';
 import { getChatHistory, getGroupMessages } from '../lib/chat';
+import { EmojiToggleButton } from './EmojiPicker';
 
 export default function ChatWindow({ conversationType, conversationId, conversationName, onClose }) {
   const { user } = useContext(AuthContext);
@@ -11,7 +12,9 @@ export default function ChatWindow({ conversationType, conversationId, conversat
   const [isLoading, setIsLoading] = useState(true);
   const [messageInput, setMessageInput] = useState('');
   const [error, setError] = useState(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
   const pendingMessagesRef = useRef(new Set());
   const { sendMessage, isConnected, lastMessage } = useWebSocket();
 
@@ -147,6 +150,15 @@ export default function ChatWindow({ conversationType, conversationId, conversat
     scrollToBottom();
   }, [messages]);
 
+  // Handle emoji select
+  const handleEmojiSelect = (emoji) => {
+    setMessageInput(prev => prev + emoji);
+    // Focus back to input
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  };
+
   // Handle send message
   const handleSend = () => {
     if (!messageInput.trim() || !user) return;
@@ -274,9 +286,15 @@ export default function ChatWindow({ conversationType, conversationId, conversat
       </div>
 
       {/* Input area */}
-      <div className="p-4 border-t">
+      <div className="p-4 border-t relative">
         <div className="flex gap-2">
+          <EmojiToggleButton
+            onEmojiSelect={handleEmojiSelect}
+            isOpen={showEmojiPicker}
+            onToggle={() => setShowEmojiPicker(!showEmojiPicker)}
+          />
           <input
+            ref={inputRef}
             type="text"
             value={messageInput}
             onChange={(e) => setMessageInput(e.target.value)}
