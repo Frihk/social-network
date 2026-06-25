@@ -37,6 +37,7 @@ func NewServer() *http.Server {
 
 	protected.HandleFunc("/auth/logout", handlers.Logout).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/auth/me", handlers.GetMe).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/auth/session", handlers.GetSession).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/users/{id}", handlers.GetUserProfile).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/users/{id}/privacy", handlers.UpdateProfilePrivacy).Methods("PUT", "OPTIONS")
 

@@ -63,6 +63,21 @@ export async function getMe() {
   return response.json();
 }
 
+export async function getSession() {
+  const response = await fetch(`${API_URL}/auth/session`, {
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      return null;
+    }
+    throw new Error('Failed to get session');
+  }
+
+  return response.json();
+}
+
 export async function getUserProfile(userId) {
   const response = await fetch(`${API_URL}/users/${userId}`, {
     credentials: 'include',
