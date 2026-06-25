@@ -58,3 +58,13 @@ func MarkAllAsRead(userID string) error {
 	_, err := sqlite.DB.Exec(query, userID)
 	return err
 }
+
+// GetNotificationOwner returns the user_id of a notification, or empty string if not found
+func GetNotificationOwner(notificationID string) (string, error) {
+	var userID string
+	err := sqlite.DB.QueryRow(`SELECT user_id FROM notifications WHERE id = ?`, notificationID).Scan(&userID)
+	if err != nil {
+		return "", err
+	}
+	return userID, nil
+}

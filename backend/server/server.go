@@ -34,6 +34,11 @@ func NewServer() *http.Server {
 	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET", "OPTIONS")
 
+	// Notification routes
+	protected.HandleFunc("/notifications", handlers.GetNotifications).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/notifications/{notificationId}/read", handlers.MarkNotificationAsRead).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/notifications/read-all", handlers.MarkAllNotificationsAsRead).Methods("PUT", "OPTIONS")
+
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: router,
