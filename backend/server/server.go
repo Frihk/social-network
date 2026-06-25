@@ -45,6 +45,7 @@ func NewServer() *http.Server {
 	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/user/groups", handlers.GetUserGroups).Methods("GET", "OPTIONS")
 
 	// Notification routes
 	protected.HandleFunc("/notifications", handlers.GetNotifications).Methods("GET", "OPTIONS")
