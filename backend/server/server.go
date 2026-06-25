@@ -6,15 +6,26 @@ import (
 
 	"social/pkg/handlers"
 	"social/queries/middleware"
+	"social/queries/websocket"
 
 	"github.com/gorilla/mux"
 )
+
+// WSHub is a global WebSocket hub accessible to other handlers
+var WSHub *websocket.Hub
 
 func NewServer() *http.Server {
 	router := mux.NewRouter()
 
 	// Apply CORS middleware globally
 	router.Use(middleware.CORSMiddleware)
+
+	// Create and start WebSocket hub
+	WSHub = websocket.NewHub()
+	go WSHub.Run()
+
+	// WebSocket route (NOT protected by auth middleware - session token in URL)
+	router.HandleFunc("/api/ws", handlers.HandleWebSocketUpgrade(WSHub)).Methods("GET", "OPTIONS")
 
 	// Public routes
 	router.HandleFunc("/api/auth/register", handlers.Register).Methods("POST", "OPTIONS")
