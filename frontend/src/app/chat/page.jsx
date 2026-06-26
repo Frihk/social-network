@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import ChatWindow from '../../components/ChatWindow';
 import { getDMEligibleUsers } from '../../lib/chat';
-import { getUserGroups } from '../../lib/groups';
+import { fetchGroups } from '../../lib/groups';
 
 export default function ChatPage() {
   const { user } = useContext(AuthContext);
@@ -34,7 +34,7 @@ export default function ChatPage() {
       // Fetch groups
       setIsLoadingGroups(true);
       try {
-        const userGroups = await getUserGroups();
+        const userGroups = await fetchGroups(user?.id);
         setGroups(userGroups || []);
       } catch (err) {
         console.error('Failed to fetch groups:', err);
@@ -107,7 +107,7 @@ export default function ChatPage() {
             onClick={() => {
               // Refresh data
               getDMEligibleUsers().then(setDmUsers).catch(console.error);
-              getUserGroups().then(setGroups).catch(console.error);
+              fetchGroups(user?.id).then(setGroups).catch(console.error);
             }}
             className="text-gray-500 hover:text-gray-700"
             title="Refresh"
