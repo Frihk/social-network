@@ -1,7 +1,5 @@
 package middleware
 
-<<<<<<< HEAD
-=======
 import (
 	"context"
 	"net/http"
@@ -46,4 +44,3 @@ func GetUserID(ctx context.Context) string {
 	}
 	return ""
 }
->>>>>>> kagunda

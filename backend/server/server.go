@@ -1,7 +1,5 @@
 package server
 
-<<<<<<< HEAD
-=======
 import (
 	"log"
 	"net/http"
@@ -39,4 +37,3 @@ func NewServer() *http.Server {
 	log.Println("Server configured on :8080")
 	return server
 }
->>>>>>> kagunda

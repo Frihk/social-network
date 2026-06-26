@@ -1,7 +1,5 @@
 package middleware
 
-<<<<<<< HEAD
-=======
 import "net/http"
 
 func CORSMiddleware(next http.Handler) http.Handler {
@@ -19,4 +17,3 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
->>>>>>> kagunda
