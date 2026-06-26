@@ -53,44 +53,44 @@ func (s *Server) setupRoutes() {
 	})
 
 	// Public routes (No authentication required)
-	api.HandleFunc("/register", handlers.Register).Methods("POST")
-	api.HandleFunc("/login", handlers.Login).Methods("POST")
+	api.HandleFunc("/register", handlers.Register).Methods("POST", "OPTIONS")
+	api.HandleFunc("/login", handlers.Login).Methods("POST", "OPTIONS")
 	
 	// Protected routes (Require authentication)
 	protected := api.PathPrefix("").Subrouter()
 	protected.Use(middleware.AuthMiddleware)
 	
 	// User / Auth
-	protected.HandleFunc("/logout", handlers.Logout).Methods("POST")
-	protected.HandleFunc("/me", handlers.GetMe).Methods("GET")
-	protected.HandleFunc("/session", handlers.GetSession).Methods("GET") // From auth.go
+	protected.HandleFunc("/logout", handlers.Logout).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/me", handlers.GetMe).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/session", handlers.GetSession).Methods("GET", "OPTIONS") // From auth.go
 
 	// Chat routes
-	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET")
-	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET")
+	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET", "OPTIONS")
 
 	// Groups routes
-	protected.HandleFunc("/groups", groupHandlers.ListGroups).Methods("GET")
-	protected.HandleFunc("/groups", groupHandlers.CreateGroup).Methods("POST")
-	protected.HandleFunc("/groups/{id}", groupHandlers.GetGroupDetails).Methods("GET")
-	protected.HandleFunc("/groups/{id}/invite", groupHandlers.InviteUserToGroup).Methods("POST")
-	protected.HandleFunc("/groups/{id}/request", groupHandlers.RequestToJoinGroup).Methods("POST")
-	protected.HandleFunc("/groups/{id}/events", groupHandlers.ListGroupEvents).Methods("GET")
-	protected.HandleFunc("/groups/{id}/events", groupHandlers.CreateEvent).Methods("POST")
+	protected.HandleFunc("/groups", groupHandlers.ListGroups).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/groups", groupHandlers.CreateGroup).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/groups/{id}", groupHandlers.GetGroupDetails).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/groups/{id}/invite", groupHandlers.InviteUserToGroup).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/groups/{id}/request", groupHandlers.RequestToJoinGroup).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/groups/{id}/events", groupHandlers.ListGroupEvents).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/groups/{id}/events", groupHandlers.CreateEvent).Methods("POST", "OPTIONS")
 	
 	// Group Members endpoints
-	protected.HandleFunc("/groups/{id}/members/{userId}/accept", groupHandlers.AcceptMember).Methods("PUT")
-	protected.HandleFunc("/groups/{id}/members/{userId}/decline", groupHandlers.DeclineMember).Methods("PUT")
+	protected.HandleFunc("/groups/{id}/members/{userId}/accept", groupHandlers.AcceptMember).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/groups/{id}/members/{userId}/decline", groupHandlers.DeclineMember).Methods("PUT", "OPTIONS")
 	
 	// Group Invites endpoints
-	protected.HandleFunc("/group-invites/{id}/accept", groupHandlers.AcceptGroupInvite).Methods("PUT")
-	protected.HandleFunc("/group-invites/{id}/decline", groupHandlers.DeclineGroupInvite).Methods("PUT")
+	protected.HandleFunc("/group-invites/{id}/accept", groupHandlers.AcceptGroupInvite).Methods("PUT", "OPTIONS")
+	protected.HandleFunc("/group-invites/{id}/decline", groupHandlers.DeclineGroupInvite).Methods("PUT", "OPTIONS")
 	
 	// Group Messages
-	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET")
+	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET", "OPTIONS")
 
 	// Events routes
-	protected.HandleFunc("/events/{id}/respond", groupHandlers.RespondToEvent).Methods("POST")
+	protected.HandleFunc("/events/{id}/respond", groupHandlers.RespondToEvent).Methods("POST", "OPTIONS")
 
 	// WebSockets (doesn't start with /api)
 	wsRouter := s.mux.PathPrefix("/ws").Subrouter()
@@ -98,7 +98,7 @@ func (s *Server) setupRoutes() {
 	wsRouter.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	})
-	wsRouter.HandleFunc("", handlers.HandleWebSocketUpgrade(s.hub)).Methods("GET")
+	wsRouter.HandleFunc("", handlers.HandleWebSocketUpgrade(s.hub)).Methods("GET", "OPTIONS")
 }
 
 // Start starts the server
