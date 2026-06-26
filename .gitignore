@@ -1,0 +1,18 @@
+# Backend
+backend/*.exe
+backend/*.db
+backend/social-network.db
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
