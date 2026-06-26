@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"social/models"
 	"social/pkg/handlers"
+	"social/queries/middleware"
 	"social/queries"
 	"strings"
 )
@@ -52,8 +53,8 @@ func (h *GroupHandlers) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -72,8 +73,8 @@ func (h *GroupHandlers) GetGroupDetails(w http.ResponseWriter, r *http.Request) 
 	groupID := extractIDFromPath(r.URL.Path, "/api/groups/")
 
 	// Get user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -135,8 +136,8 @@ func (h *GroupHandlers) InviteUserToGroup(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -193,8 +194,8 @@ func (h *GroupHandlers) RequestToJoinGroup(w http.ResponseWriter, r *http.Reques
 	groupID = strings.TrimSuffix(groupID, "/request")
 
 	// Get user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -255,8 +256,8 @@ func (h *GroupHandlers) AcceptMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	authUserID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	authUserID := middleware.GetUserID(r.Context())
+	if authUserID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -305,8 +306,8 @@ func (h *GroupHandlers) DeclineMember(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	authUserID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	authUserID := middleware.GetUserID(r.Context())
+	if authUserID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -346,8 +347,8 @@ func (h *GroupHandlers) AcceptGroupInvite(w http.ResponseWriter, r *http.Request
 	groupID = strings.TrimSuffix(groupID, "/accept")
 
 	// Get authenticated user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -386,8 +387,8 @@ func (h *GroupHandlers) DeclineGroupInvite(w http.ResponseWriter, r *http.Reques
 	groupID = strings.TrimSuffix(groupID, "/decline")
 
 	// Get authenticated user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -426,8 +427,8 @@ func (h *GroupHandlers) ListGroupEvents(w http.ResponseWriter, r *http.Request) 
 	groupID = strings.TrimSuffix(groupID, "/events")
 
 	// Get authenticated user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -468,8 +469,8 @@ func (h *GroupHandlers) CreateEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}
@@ -533,8 +534,8 @@ func (h *GroupHandlers) RespondToEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get authenticated user ID from context
-	userID, ok := r.Context().Value(handlers.UserIDKey{}).(string)
-	if !ok {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
 		handlers.JSONError(w, "user_id not found in context", http.StatusUnauthorized)
 		return
 	}

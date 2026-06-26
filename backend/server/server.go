@@ -6,20 +6,29 @@ import (
 	"social/feature"
 	"social/pkg/handlers"
 	"social/queries"
+	"social/queries/middleware"
+	ws "social/queries/websocket"
+
+	"github.com/gorilla/mux"
 )
 
 // Server represents the API server
 type Server struct {
-	mux *http.ServeMux
+	mux *mux.Router
 	db  *sql.DB
+	hub *ws.Hub
 }
 
 // NewServer creates a new server instance
 func NewServer(db *sql.DB) *Server {
-	mux := http.NewServeMux()
+	router := mux.NewRouter()
+	hub := ws.NewHub()
+	go hub.Run() // Start the WebSocket hub
+
 	server := &Server{
-		mux: mux,
+		mux: router,
 		db:  db,
+		hub: hub,
 	}
 
 	server.setupRoutes()
@@ -34,142 +43,65 @@ func (s *Server) setupRoutes() {
 	// Initialize handlers
 	groupHandlers := feature.NewGroupHandlers(groupQueries)
 
-	// Create a chain of middleware
-	api := handlers.CORSMiddleware(handlers.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Route the request to the appropriate handler
-		path := r.URL.Path
-		method := r.Method
+	// Base API router
+	api := s.mux.PathPrefix("/api").Subrouter()
+	api.Use(handlers.CORSMiddleware)
 
-		// Groups endpoints
-		if path == "/api/groups" {
-			if method == "GET" {
-				groupHandlers.ListGroups(w, r)
-			} else if method == "POST" {
-				groupHandlers.CreateGroup(w, r)
-			} else {
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-			return
-		}
+	// Handle OPTIONS requests globally for the API subrouter
+	api.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
 
-		// Get group details - /api/groups/{id}
-		if len(path) > 11 && path[:11] == "/api/groups/" {
-			remainder := path[11:]
-			// Check if it's an ID without sub-routes
-			if len(remainder) > 0 && remainder[len(remainder)-1] != '/' && !containsSlash(remainder) {
-				if method == "GET" {
-					groupHandlers.GetGroupDetails(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
+	// Public routes (No authentication required)
+	api.HandleFunc("/register", handlers.Register).Methods("POST")
+	api.HandleFunc("/login", handlers.Login).Methods("POST")
+	
+	// Protected routes (Require authentication)
+	protected := api.PathPrefix("").Subrouter()
+	protected.Use(middleware.AuthMiddleware)
+	
+	// User / Auth
+	protected.HandleFunc("/logout", handlers.Logout).Methods("POST")
+	protected.HandleFunc("/me", handlers.GetMe).Methods("GET")
+	protected.HandleFunc("/session", handlers.GetSession).Methods("GET") // From auth.go
 
-			// Invite user - POST /api/groups/{id}/invite
-			if len(remainder) > 7 && remainder[len(remainder)-7:] == "/invite" {
-				if method == "POST" {
-					groupHandlers.InviteUserToGroup(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
+	// Chat routes
+	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET")
+	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET")
 
-			// Request to join - POST /api/groups/{id}/request
-			if len(remainder) > 8 && remainder[len(remainder)-8:] == "/request" {
-				if method == "POST" {
-					groupHandlers.RequestToJoinGroup(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
+	// Groups routes
+	protected.HandleFunc("/groups", groupHandlers.ListGroups).Methods("GET")
+	protected.HandleFunc("/groups", groupHandlers.CreateGroup).Methods("POST")
+	protected.HandleFunc("/groups/{id}", groupHandlers.GetGroupDetails).Methods("GET")
+	protected.HandleFunc("/groups/{id}/invite", groupHandlers.InviteUserToGroup).Methods("POST")
+	protected.HandleFunc("/groups/{id}/request", groupHandlers.RequestToJoinGroup).Methods("POST")
+	protected.HandleFunc("/groups/{id}/events", groupHandlers.ListGroupEvents).Methods("GET")
+	protected.HandleFunc("/groups/{id}/events", groupHandlers.CreateEvent).Methods("POST")
+	
+	// Group Members endpoints
+	protected.HandleFunc("/groups/{id}/members/{userId}/accept", groupHandlers.AcceptMember).Methods("PUT")
+	protected.HandleFunc("/groups/{id}/members/{userId}/decline", groupHandlers.DeclineMember).Methods("PUT")
+	
+	// Group Invites endpoints
+	protected.HandleFunc("/group-invites/{id}/accept", groupHandlers.AcceptGroupInvite).Methods("PUT")
+	protected.HandleFunc("/group-invites/{id}/decline", groupHandlers.DeclineGroupInvite).Methods("PUT")
+	
+	// Group Messages
+	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET")
 
-			// Events - /api/groups/{id}/events
-			if len(remainder) > 7 && remainder[len(remainder)-7:] == "/events" {
-			if method == "GET" {
-				groupHandlers.ListGroupEvents(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
+	// Events routes
+	protected.HandleFunc("/events/{id}/respond", groupHandlers.RespondToEvent).Methods("POST")
 
-			// Members endpoints - /api/groups/{id}/members/{userId}/{action}
-			if len(remainder) > 9 && remainder[len(remainder)-7:] == "/accept" {
-				if method == "PUT" {
-					groupHandlers.AcceptMember(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
-
-			if len(remainder) > 9 && remainder[len(remainder)-8:] == "/decline" {
-				if method == "PUT" {
-					groupHandlers.DeclineMember(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
-		}
-
-		// Group invites endpoints
-		if len(path) > 15 && path[:15] == "/api/group-invites/" {
-			remainder := path[15:]
-
-			// Accept invite - PUT /api/group-invites/{id}/accept
-			if len(remainder) > 7 && remainder[len(remainder)-7:] == "/accept" {
-				if method == "PUT" {
-					groupHandlers.AcceptGroupInvite(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
-
-			// Decline invite - PUT /api/group-invites/{id}/decline
-			if len(remainder) > 8 && remainder[len(remainder)-8:] == "/decline" {
-				if method == "PUT" {
-					groupHandlers.DeclineGroupInvite(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
-		}
-
-		// Event respond - POST /api/events/{id}/respond
-		if len(path) > 11 && path[:11] == "/api/events/" {
-			remainder := path[11:]
-			if len(remainder) > 8 && remainder[len(remainder)-8:] == "/respond" {
-				if method == "POST" {
-					groupHandlers.RespondToEvent(w, r)
-				} else {
-					http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-				}
-				return
-			}
-		}
-
-		http.Error(w, "Not found", http.StatusNotFound)
-	})))
-
-	s.mux.Handle("/", api)
+	// WebSockets (doesn't start with /api)
+	wsRouter := s.mux.PathPrefix("/ws").Subrouter()
+	wsRouter.Use(handlers.CORSMiddleware)
+	wsRouter.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})
+	wsRouter.HandleFunc("", handlers.HandleWebSocketUpgrade(s.hub)).Methods("GET")
 }
 
 // Start starts the server
 func (s *Server) Start(addr string) error {
 	return http.ListenAndServe(addr, s.mux)
-}
-
-// containsSlash checks if a string contains a forward slash
-func containsSlash(s string) bool {
-	for _, c := range s {
-		if c == '/' {
-			return true
-		}
-	}
-	return false
 }
