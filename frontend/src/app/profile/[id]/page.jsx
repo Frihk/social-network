@@ -1,1 +1,220 @@
-//
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { getUserProfile, updateProfilePrivacy } from "@/lib/auth";
+import { getUserPosts } from "@/lib/posts";
+import { getFollowers, getFollowing, followUser, unfollowUser, acceptFollow, declineFollow } from "@/lib/followers";
+import PostCard from "@/components/PostCard";
+
+export default function ProfilePage() {
+  const { id: profileId } = useParams();
+  const { user: currentUser } = useAuth();
+  const isOwnProfile = currentUser && currentUser.id === profileId;
+
+  const [profileUser, setProfileUser] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [userData, postsData, followersData, followingData] = await Promise.all([
+        getUserProfile(profileId),
+        getUserPosts(profileId),
+        getFollowers(profileId),
+        getFollowing(profileId),
+      ]);
+
+      setProfileUser(userData);
+      setPosts(postsData || []);
+      setFollowers(followersData?.filter((f) => f.status === "accepted") || []);
+      setFollowing(followingData || []);
+
+      if (isOwnProfile) {
+        setPendingRequests(followersData?.filter((f) => f.status === "pending") || []);
+      }
+
+      if (currentUser && !isOwnProfile) {
+        const myFollowing = await getFollowing(currentUser.id);
+        setIsFollowing(!!myFollowing?.find((f) => f.following_id === profileId));
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [profileId, currentUser, isOwnProfile]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleFollowToggle = async () => {
+    try {
+      if (isFollowing) await unfollowUser(profileId);
+      else await followUser(profileId);
+      fetchData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleRequest = async (requestId, action) => {
+    try {
+      if (action === "accept") await acceptFollow(requestId);
+      else await declineFollow(requestId);
+      fetchData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handlePrivacyToggle = async () => {
+    if (!isOwnProfile) return;
+    setUpdatingPrivacy(true);
+    try {
+      await updateProfilePrivacy(profileId, !profileUser.is_private);
+      setProfileUser((prev) => ({ ...prev, is_private: !prev.is_private }));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingPrivacy(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="container" style={{ textAlign: "center" }}><p>Loading profile...</p></div>;
+  }
+
+  if (error) {
+    return <div className="container" style={{ textAlign: "center" }}><p style={{ color: "#dc2626" }}>{error}</p></div>;
+  }
+
+  return (
+    <div className="container">
+      <div className="card" style={{ padding: "40px", textAlign: "center", marginBottom: "24px" }}>
+        <div style={{
+          width: "120px", height: "120px", borderRadius: "50%", background: "#ddd",
+          margin: "0 auto 16px", overflow: "hidden",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {profileUser?.avatar ? (
+            <img src={profileUser.avatar} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ) : (
+            <span style={{ fontSize: "32px", color: "#6b7280" }}>
+              {profileUser?.first_name?.[0]}{profileUser?.last_name?.[0]}
+            </span>
+          )}
+        </div>
+        <h1 style={{ fontSize: "28px", fontWeight: "700" }}>
+          {profileUser ? `${profileUser.first_name} ${profileUser.last_name}` : "Unknown User"}
+        </h1>
+        {profileUser?.nickname && <p style={{ color: "var(--text-secondary)", marginTop: "4px" }}>@{profileUser.nickname}</p>}
+        {profileUser?.about_me && <p style={{ marginTop: "8px", fontSize: "14px" }}>{profileUser.about_me}</p>}
+
+        {isOwnProfile && (
+          <div style={{ marginTop: "16px" }}>
+            <button
+              onClick={handlePrivacyToggle}
+              disabled={updatingPrivacy}
+              className={profileUser?.is_private ? "btn-secondary" : "btn-primary"}
+              style={{ minWidth: "140px" }}
+            >
+              {updatingPrivacy
+                ? "Updating..."
+                : profileUser?.is_private
+                ? "🔒 Private Profile"
+                : "🌍 Public Profile"}
+            </button>
+          </div>
+        )}
+
+        {!isOwnProfile && profileUser?.is_private && (
+          <p style={{ color: "#b45309", marginTop: "8px", fontSize: "14px" }}>🔒 This is a private profile</p>
+        )}
+
+        {!isOwnProfile && currentUser && (
+          <div style={{ marginTop: "16px" }}>
+            <button onClick={handleFollowToggle} className={isFollowing ? "btn-secondary" : "btn-primary"} style={{ minWidth: "120px" }}>
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {profileUser?.email && (
+        <div className="card" style={{ marginBottom: "24px" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Information</h2>
+          <div style={{ fontSize: "14px" }}>
+            <div><span style={{ fontWeight: "600" }}>Email:</span> {profileUser.email}</div>
+            {profileUser.date_of_birth && (
+              <div><span style={{ fontWeight: "600" }}>Date of Birth:</span> {profileUser.date_of_birth}</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isOwnProfile && pendingRequests.length > 0 && (
+        <div className="card" style={{ border: "1px solid #0866ff", background: "#f0f7ff", marginBottom: "24px" }}>
+          <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Follow Requests</h2>
+          {pendingRequests.map((req) => (
+            <div key={req.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                <span style={{ fontSize: "14px", fontWeight: "600" }}>User {req.follower_id}</span>
+              </div>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={() => handleRequest(req.id, "accept")} className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }}>Confirm</button>
+                <button onClick={() => handleRequest(req.id, "decline")} className="btn-secondary" style={{ padding: "4px 12px", fontSize: "13px" }}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+        <div className="card">
+          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Followers ({followers.length})</h3>
+          {followers.length === 0
+            ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>No followers yet.</p>
+            : followers.map((f) => (
+              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                <span style={{ fontSize: "14px" }}>User {f.follower_id}</span>
+              </div>
+            ))
+          }
+        </div>
+
+        <div className="card">
+          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Following ({following.length})</h3>
+          {following.length === 0
+            ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Not following anyone yet.</p>
+            : following.map((f) => (
+              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                <span style={{ fontSize: "14px" }}>User {f.following_id}</span>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
+      <div>
+        <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Posts</h2>
+        {posts.length === 0
+          ? <div className="card" style={{ textAlign: "center", padding: "32px" }}><p style={{ color: "var(--text-secondary)" }}>No posts yet.</p></div>
+          : posts.map((post) => <PostCard key={post.id} post={post} />)
+        }
+      </div>
+    </div>
+  );
+}
