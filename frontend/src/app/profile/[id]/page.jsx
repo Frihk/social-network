@@ -67,6 +67,7 @@ export default function ProfilePage() {
   const handleFollowToggle = async () => {
     try {
       if (followState === "following") {
+        if (!window.confirm("Are you sure?")) return;
         setFollowState("not_following");
         await unfollowUser(profileId);
       } else if (followState === "not_following") {
@@ -92,6 +93,7 @@ export default function ProfilePage() {
 
   const handlePrivacyToggle = async () => {
     if (!isOwnProfile) return;
+    if (!window.confirm("Are you sure?")) return;
     setUpdatingPrivacy(true);
     try {
       await updateProfilePrivacy(profileId, !profileUser.is_private);
