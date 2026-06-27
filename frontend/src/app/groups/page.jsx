@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 import GroupCard from '../../components/GroupCard';
 import { fetchGroups, createGroup, requestToJoinGroup } from '../../lib/groups';
 
@@ -9,19 +11,21 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '' });
-  const [loading, setLoading] = useState(true);
-  
-  // For development, we'll use a mocked user. In a real app this would come from AuthContext.
-  const currentUserId = 'user123'; 
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    loadGroups();
-  }, []);
+    if (!authLoading && !user) {
+      router.push('/login');
+    } else if (user) {
+      loadGroups();
+    }
+  }, [authLoading, user]);
 
   const loadGroups = async () => {
     setLoading(true);
     try {
-      const data = await fetchGroups(currentUserId);
+      const data = await fetchGroups();
       setGroups(data || []);
     } catch (err) {
       console.error(err);
@@ -33,7 +37,7 @@ export default function GroupsPage() {
   const handleCreateGroup = async (e) => {
     e.preventDefault();
     try {
-      await createGroup(currentUserId, formData);
+      await createGroup(formData);
       setShowCreateModal(false);
       setFormData({ title: '', description: '' });
       loadGroups(); // Refresh list
@@ -45,13 +49,17 @@ export default function GroupsPage() {
 
   const handleJoinRequest = async (groupId) => {
     try {
-      await requestToJoinGroup(currentUserId, groupId);
+      await requestToJoinGroup(groupId);
       alert('Join request sent!');
     } catch (err) {
       console.error(err);
       alert('Failed to send join request');
     }
   };
+
+  if (authLoading || (!user && !authLoading)) {
+    return <div style={styles.loading}>Loading...</div>;
+  }
 
   return (
     <div style={styles.container}>
@@ -77,7 +85,7 @@ export default function GroupsPage() {
                 key={group.id} 
                 group={group} 
                 onJoinRequest={handleJoinRequest} 
-                currentUserId={currentUserId}
+                currentUserId={user?.id}
               />
             ))
           )}
