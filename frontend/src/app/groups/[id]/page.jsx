@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import EventWidget from '../../../components/EventWidget';
 import { 
   fetchGroupDetails, 
@@ -90,6 +91,9 @@ export default function GroupDetailPage({ params }) {
 
   return (
     <div style={styles.container}>
+      <div style={{ marginBottom: '16px' }}>
+        <Link href="/groups" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>&larr; Back to Groups</Link>
+      </div>
       {/* Header Section */}
       <div style={styles.headerCard}>
         <h1 style={styles.title}>{group.title}</h1>

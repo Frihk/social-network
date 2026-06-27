@@ -134,6 +134,9 @@ export default function ProfilePage() {
 
   return (
     <div className="container">
+      <div style={{ marginBottom: "16px", marginTop: "16px" }}>
+        <Link href="/" style={{ color: "var(--primary-color)", textDecoration: "none", fontWeight: "600" }}>&larr; Back to Feed</Link>
+      </div>
       <div className="card" style={{ padding: "40px", textAlign: "center", marginBottom: "24px" }}>
         <div style={{
           width: "120px", height: "120px", borderRadius: "50%", background: "#ddd",

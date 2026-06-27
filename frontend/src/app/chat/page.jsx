@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useContext } from 'react';
+import Link from 'next/link';
 import { AuthContext } from '../../context/AuthContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import ChatWindow from '../../components/ChatWindow';
@@ -102,7 +103,10 @@ export default function ChatPage() {
       <div className="w-1/4 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
-          <h1 className="text-xl font-bold">Messages</h1>
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-blue-500 hover:text-blue-700 font-bold text-xl">&larr;</Link>
+            <h1 className="text-xl font-bold">Messages</h1>
+          </div>
           <button
             onClick={() => {
               // Refresh data

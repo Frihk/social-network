@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import GroupCard from '../../components/GroupCard';
 import { fetchGroups, createGroup, requestToJoinGroup } from '../../lib/groups';
 
@@ -54,6 +55,9 @@ export default function GroupsPage() {
 
   return (
     <div style={styles.container}>
+      <div style={{ marginBottom: '16px' }}>
+        <Link href="/" style={{ color: '#3b82f6', textDecoration: 'none', fontWeight: '500' }}>&larr; Back to Feed</Link>
+      </div>
       <div style={styles.header}>
         <h1 style={styles.title}>Explore Groups</h1>
         <button style={styles.createButton} onClick={() => setShowCreateModal(true)}>
