@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
+	"time"
 
 	"social/models"
 	"social/pkg/db/sqlite"
+	"social/queries"
 
 	"github.com/gorilla/websocket"
 )
@@ -35,11 +37,13 @@ type Client struct {
 
 // Message represents a WebSocket message
 type Message struct {
-	Type    string      `json:"type"`
-	UserID  string      `json:"user_id,omitempty"`
-	GroupID string      `json:"group_id,omitempty"`
-	Content string      `json:"content,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Type      string      `json:"type"`
+	UserID    string      `json:"user_id,omitempty"`
+	GroupID   string      `json:"group_id,omitempty"`
+	SenderID  string      `json:"sender_id,omitempty"`
+	Content   string      `json:"content,omitempty"`
+	CreatedAt string      `json:"created_at,omitempty"`
+	Data      interface{} `json:"data,omitempty"`
 }
 
 // NewHub creates a new WebSocket hub
@@ -169,7 +173,31 @@ func (c *Client) readPump() {
 		}
 
 		// Handle incoming messages
-		c.hub.broadcast <- message
+		var msg Message
+		if err := json.Unmarshal(message, &msg); err == nil {
+			msg.SenderID = c.userID
+			msg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+
+			if msg.Type == "private_message" && msg.UserID != "" {
+				err := queries.SavePrivateMessage(c.userID, msg.UserID, msg.Content)
+				if err != nil {
+					log.Printf("Error saving private message: %v", err)
+				}
+			} else if msg.Type == "group_message" && msg.GroupID != "" {
+				err := queries.SaveGroupMessage(msg.GroupID, c.userID, msg.Content)
+				if err != nil {
+					log.Printf("Error saving group message: %v", err)
+				}
+			}
+
+			if updatedMsg, err := json.Marshal(msg); err == nil {
+				c.hub.broadcast <- updatedMsg
+			} else {
+				c.hub.broadcast <- message
+			}
+		} else {
+			c.hub.broadcast <- message
+		}
 	}
 }
 
