@@ -2,37 +2,39 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import EventWidget from '../../../components/EventWidget';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../../../context/AuthContext';
+import EventWidget from '../../../../components/EventWidget';
 import { 
   fetchGroupDetails, 
   fetchGroupEvents, 
   inviteUserToGroup, 
   acceptMemberRequest, 
   declineMemberRequest 
-} from '../../../lib/groups';
+} from '../../../../lib/groups';
 
 export default function GroupDetailPage({ params }) {
   const { id } = params;
   const [group, setGroup] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [inviteUserId, setInviteUserId] = useState('');
-  
-  // For development, we mock the current user.
-  const currentUserId = 'user123';
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    if (id) {
+    if (!authLoading && !user) {
+      router.push('/login');
+    } else if (user && id) {
       loadData();
     }
-  }, [id]);
+  }, [id, authLoading, user]);
 
   const loadData = async () => {
     setLoading(true);
     try {
       const [groupData, eventsData] = await Promise.all([
-        fetchGroupDetails(currentUserId, id).catch(() => null),
-        fetchGroupEvents(currentUserId, id).catch(() => [])
+        fetchGroupDetails(id).catch(() => null),
+        fetchGroupEvents(id).catch(() => [])
       ]);
       setGroup(groupData);
       setEvents(eventsData || []);
@@ -46,7 +48,7 @@ export default function GroupDetailPage({ params }) {
   const handleInvite = async (e) => {
     e.preventDefault();
     try {
-      await inviteUserToGroup(currentUserId, id, inviteUserId);
+      await inviteUserToGroup(id, inviteUserId);
       setInviteUserId('');
       alert('User invited successfully!');
     } catch (err) {
@@ -57,7 +59,7 @@ export default function GroupDetailPage({ params }) {
 
   const handleAcceptRequest = async (memberId) => {
     try {
-      await acceptMemberRequest(currentUserId, id, memberId);
+      await acceptMemberRequest(id, memberId);
       loadData(); // Refresh group details
     } catch (err) {
       console.error(err);
@@ -67,7 +69,7 @@ export default function GroupDetailPage({ params }) {
 
   const handleDeclineRequest = async (memberId) => {
     try {
-      await declineMemberRequest(currentUserId, id, memberId);
+      await declineMemberRequest(id, memberId);
       loadData(); // Refresh group details
     } catch (err) {
       console.error(err);
@@ -75,7 +77,7 @@ export default function GroupDetailPage({ params }) {
     }
   };
 
-  if (loading) {
+  if (authLoading || loading || (!user && !authLoading)) {
     return <div style={styles.loading}>Loading group details...</div>;
   }
 
@@ -83,7 +85,7 @@ export default function GroupDetailPage({ params }) {
     return <div style={styles.error}>Group not found or you do not have access.</div>;
   }
 
-  const isCreator = group.creator_id === currentUserId;
+  const isCreator = group.creator_id === user?.id;
   // Fallback to empty array if members is undefined
   const members = group.members || [];
   const acceptedMembers = members.filter(m => m.status === 'accepted' || m.user_id === group.creator_id);
@@ -179,7 +181,7 @@ export default function GroupDetailPage({ params }) {
           <EventWidget 
             events={events} 
             groupId={id} 
-            currentUserId={currentUserId} 
+            currentUserId={user?.id} 
             onEventUpdated={loadData}
           />
 
