@@ -445,12 +445,22 @@ func (q *GroupQueries) CreateNotification(userID, notificationType, relatedID, m
 	}
 
 	_, err := q.db.Exec(
-		"INSERT INTO notifications (id, user_id, type, related_id, message, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		notification.ID, notification.UserID, notification.Type, notification.RelatedID, notification.Message, notification.Read, notification.CreatedAt,
+		"INSERT INTO notifications (id, user_id, type, actor_id, entity_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		notification.ID, notification.UserID, notification.Type, notification.UserID, notification.RelatedID, notification.Read, notification.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
+
+	dispatchNotification(userID, map[string]interface{}{
+		"id":         notification.ID,
+		"user_id":    notification.UserID,
+		"type":       notification.Type,
+		"actor_id":   notification.UserID,
+		"entity_id":  notification.RelatedID,
+		"is_read":    0,
+		"created_at": notification.CreatedAt,
+	})
 
 	return notification, nil
 }

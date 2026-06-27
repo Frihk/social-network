@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"social/pkg/db/sqlite"
 	"social/pkg/sqllite"
 	"social/server"
 
@@ -17,6 +18,7 @@ func main() {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer db.Close()
+	sqlite.DB = db
 
 	// Run migrations
 	if err := sqllite.RunMigrations(db); err != nil {

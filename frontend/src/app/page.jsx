@@ -1,12 +1,37 @@
 'use client';
 
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import NotificationBell from '@/components/NotificationBell';
+import PostCard from '@/components/PostCard';
+import PostForm from '@/components/PostForm';
+import { getFeed } from '@/lib/posts';
 
 export default function HomePage() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
+  const [posts, setPosts] = useState([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState('');
+
+  const fetchFeed = useCallback(async () => {
+    setFeedLoading(true);
+    setFeedError('');
+    try {
+      const data = await getFeed();
+      setPosts(data || []);
+    } catch (err) {
+      setFeedError(err.message);
+    } finally {
+      setFeedLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) fetchFeed();
+  }, [user, fetchFeed]);
 
   const handleLogout = async () => {
     await logout();
@@ -30,6 +55,19 @@ export default function HomePage() {
           <div className="flex items-center gap-4">
             {user && (
               <>
+                <NotificationBell />
+                <Link
+                  href="/chat"
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  Chat
+                </Link>
+                <Link
+                  href="/groups"
+                  className="text-gray-700 hover:text-blue-600"
+                >
+                  Groups
+                </Link>
                 <Link
                   href={`/profile/${user.id}`}
                   className="text-gray-700 hover:text-blue-600"
@@ -53,16 +91,34 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">Welcome, {user?.first_name}!</h2>
-            <p className="text-gray-600">
-              This is your social network feed. Start by exploring profiles, creating posts,
-              and connecting with friends.
-            </p>
+            <PostForm onPostCreated={fetchFeed} />
           </div>
 
-          {/* Posts Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-bold mb-4">Recent Posts</h3>
-            <p className="text-gray-500">No posts yet. Be the first to post!</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Recent Posts</h3>
+              <button
+                type="button"
+                onClick={fetchFeed}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {feedError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {feedError}
+              </div>
+            )}
+
+            {feedLoading ? (
+              <div className="bg-white rounded-lg shadow-md p-6 text-gray-500">Loading feed...</div>
+            ) : posts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow-md p-6 text-gray-500">No posts yet. Be the first to post!</div>
+            ) : (
+              posts.map((post) => <PostCard key={post.id} post={post} />)
+            )}
           </div>
         </div>
       </div>

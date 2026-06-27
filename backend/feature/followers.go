@@ -61,7 +61,10 @@ func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status == "pending" {
-		_ = followerRowID
+		if err := queries.CreateNotification(targetUserID, "follow_request", currentUserID, strconv.FormatInt(followerRowID, 10)); err != nil {
+			http.Error(w, `{"error":"failed to create follow request notification"}`, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

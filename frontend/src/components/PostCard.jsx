@@ -134,7 +134,13 @@ export default function PostCard({ post }) {
                     style={{ padding: "8px 12px", borderRadius: "20px" }}
                   />
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", alignItems: "center" }}>
-                    <input type="file" id={`comment-img-${post.id}`} hidden onChange={(e) => setCommentImage(e.target.files[0])} />
+                    <input
+                      type="file"
+                      id={`comment-img-${post.id}`}
+                      hidden
+                      accept="image/jpeg,image/png,image/gif"
+                      onChange={(e) => setCommentImage(e.target.files?.[0] || null)}
+                    />
                     <label htmlFor={`comment-img-${post.id}`} style={{ fontSize: "12px", color: "var(--primary-color)", cursor: "pointer" }}>
                       {commentImage ? "Image selected" : "Add Image"}
                     </label>

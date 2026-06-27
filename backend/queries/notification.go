@@ -3,12 +3,38 @@ package queries
 import (
 	"database/sql"
 	"social/pkg/db/sqlite"
+
 	"github.com/google/uuid"
 )
 
+type NotificationSender func(userID string, notification map[string]interface{})
+
+var notificationSender NotificationSender
+
+func SetNotificationSender(sender NotificationSender) {
+	notificationSender = sender
+}
+
+func dispatchNotification(userID string, notification map[string]interface{}) {
+	if notificationSender != nil {
+		notificationSender(userID, notification)
+	}
+}
+
 func CreateNotification(userID, notificationType, actorID, entityID string) error {
+	id := uuid.New().String()
 	query := `INSERT INTO notifications (id, user_id, type, actor_id, entity_id, is_read) VALUES (?, ?, ?, ?, ?, 0)`
-	_, err := sqlite.DB.Exec(query, uuid.New().String(), userID, notificationType, actorID, entityID)
+	_, err := sqlite.DB.Exec(query, id, userID, notificationType, actorID, entityID)
+	if err == nil {
+		dispatchNotification(userID, map[string]interface{}{
+			"id":        id,
+			"user_id":   userID,
+			"type":      notificationType,
+			"actor_id":  actorID,
+			"entity_id": entityID,
+			"is_read":   0,
+		})
+	}
 	return err
 }
 

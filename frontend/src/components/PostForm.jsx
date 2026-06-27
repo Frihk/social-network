@@ -85,7 +85,13 @@ export default function PostForm({ onPostCreated }) {
                   <option value="almost_private">Followers</option>
                   <option value="private">Specific</option>
                 </select>
-                <input type="file" id="post-image" hidden onChange={(e) => setImage(e.target.files[0])} />
+                <input
+                  type="file"
+                  id="post-image"
+                  hidden
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={(e) => setImage(e.target.files?.[0] || null)}
+                />
                 <label htmlFor="post-image" style={{ background: "#f0f2f5", borderRadius: "6px", padding: "4px 8px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>
                   {image ? "Image selected" : "Photo/Video"}
                 </label>

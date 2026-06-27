@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getUserProfile, updateProfilePrivacy } from "@/lib/auth";
+import { getUserProfile, updateProfilePrivacy, updateUserProfile } from "@/lib/auth";
 import { getUserPosts } from "@/lib/posts";
 import { getFollowers, getFollowing, followUser, unfollowUser, acceptFollow, declineFollow } from "@/lib/followers";
 import PostCard from "@/components/PostCard";
@@ -22,6 +22,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
+  const [updatingAvatar, setUpdatingAvatar] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -90,6 +91,25 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarChange = async (e) => {
+    const avatar = e.target.files?.[0];
+    if (!avatar || !isOwnProfile) return;
+
+    setUpdatingAvatar(true);
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.append("avatar", avatar);
+      const updatedUser = await updateUserProfile(profileId, formData);
+      setProfileUser(updatedUser);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingAvatar(false);
+      e.target.value = "";
+    }
+  };
+
   if (loading) {
     return <div className="container" style={{ textAlign: "center" }}><p>Loading profile...</p></div>;
   }
@@ -122,6 +142,16 @@ export default function ProfilePage() {
 
         {isOwnProfile && (
           <div style={{ marginTop: "16px" }}>
+            <label className="btn-secondary" style={{ display: "inline-block", marginRight: "8px", minWidth: "140px", cursor: "pointer" }}>
+              {updatingAvatar ? "Uploading..." : "Change Avatar"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/gif"
+                hidden
+                disabled={updatingAvatar}
+                onChange={handleAvatarChange}
+              />
+            </label>
             <button
               onClick={handlePrivacyToggle}
               disabled={updatingPrivacy}

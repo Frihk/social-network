@@ -3,7 +3,7 @@
 import { useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { AuthContext } from '../context/AuthContext';
 
-const WS_URL = 'ws://localhost:8080/api/ws';
+const WS_URL = 'ws://localhost:8080/ws';
 
 export function useWebSocket({ onMessage, maxRetries = 5, retryDelay = 3000 } = {}) {
   const { sessionToken } = useContext(AuthContext);

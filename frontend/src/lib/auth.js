@@ -1,12 +1,13 @@
 const API_URL = 'http://localhost:8080/api';
 
 export async function register(userData) {
+  const isFormData = userData instanceof FormData;
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
-    headers: {
+    headers: isFormData ? undefined : {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(userData),
+    body: isFormData ? userData : JSON.stringify(userData),
   });
 
   if (!response.ok) {
@@ -104,6 +105,25 @@ export async function updateProfilePrivacy(userId, isPrivate) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Failed to update privacy');
+  }
+
+  return response.json();
+}
+
+export async function updateUserProfile(userId, profileData) {
+  const isFormData = profileData instanceof FormData;
+  const response = await fetch(`${API_URL}/users/${userId}`, {
+    method: 'PUT',
+    headers: isFormData ? undefined : {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: isFormData ? profileData : JSON.stringify(profileData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update profile');
   }
 
   return response.json();

@@ -3,11 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"social/models"
 	"social/pkg/db/sqlite"
 	"social/queries/middleware"
+	"social/queries/utils"
 
 	"github.com/google/uuid"
 )
@@ -30,9 +32,43 @@ type LoginRequest struct {
 
 func Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
-		return
+
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
+		if err := r.ParseMultipartForm(10 << 20); err != nil {
+			http.Error(w, `{"error":"Invalid multipart form"}`, http.StatusBadRequest)
+			return
+		}
+
+		req.Email = r.FormValue("email")
+		req.Password = r.FormValue("password")
+		req.FirstName = r.FormValue("first_name")
+		req.LastName = r.FormValue("last_name")
+		req.DateOfBirth = r.FormValue("date_of_birth")
+		if nickname := strings.TrimSpace(r.FormValue("nickname")); nickname != "" {
+			req.Nickname = &nickname
+		}
+		if aboutMe := strings.TrimSpace(r.FormValue("about_me")); aboutMe != "" {
+			req.AboutMe = &aboutMe
+		}
+
+		file, header, err := r.FormFile("avatar")
+		if err == nil {
+			defer file.Close()
+			avatarPath, err := utils.SaveImage(file, header)
+			if err != nil {
+				http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+				return
+			}
+			req.Avatar = &avatarPath
+		} else if err != http.ErrMissingFile {
+			http.Error(w, `{"error":"Invalid avatar upload"}`, http.StatusBadRequest)
+			return
+		}
+	} else {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+			return
+		}
 	}
 
 	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {

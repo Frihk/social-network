@@ -14,8 +14,8 @@ export default function RegisterPage() {
     date_of_birth: '',
     nickname: '',
     about_me: '',
-    avatar: '',
   });
+  const [avatar, setAvatar] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -34,12 +34,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const submitData = {
-        ...formData,
-        nickname: formData.nickname || null,
-        about_me: formData.about_me || null,
-        avatar: formData.avatar || null,
-      };
+      const submitData = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) submitData.append(key, value);
+      });
+      if (avatar) submitData.append('avatar', avatar);
       
       await register(submitData);
       router.push('/login');
@@ -167,16 +166,19 @@ export default function RegisterPage() {
 
           <div className="mb-6">
             <label className="block text-gray-700 mb-2" htmlFor="avatar">
-              Avatar URL (Optional)
+              Avatar Image (Optional)
             </label>
             <input
-              type="text"
+              type="file"
               id="avatar"
               name="avatar"
-              value={formData.avatar}
-              onChange={handleChange}
+              accept="image/jpeg,image/png,image/gif"
+              onChange={(e) => setAvatar(e.target.files?.[0] || null)}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {avatar && (
+              <p className="text-xs text-gray-500 mt-2">{avatar.name}</p>
+            )}
           </div>
 
           <button
