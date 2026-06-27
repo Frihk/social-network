@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import NotificationBell from '@/components/NotificationBell';
 import PostCard from '@/components/PostCard';
-import PostForm from '@/components/PostForm';
 import { getFeed } from '@/lib/posts';
 
 export default function HomePage() {
@@ -89,9 +88,11 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-bold mb-4">Welcome, {user?.first_name}!</h2>
-            <PostForm onPostCreated={fetchFeed} />
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6 flex justify-between items-center">
+            <h2 className="text-xl font-bold">Welcome, {user?.first_name}!</h2>
+            <Link href="/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">
+              + Create Post
+            </Link>
           </div>
 
           <div className="space-y-4">
