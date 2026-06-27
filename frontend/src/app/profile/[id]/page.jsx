@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { getUserProfile, updateProfilePrivacy, updateUserProfile } from "@/lib/auth";
 import { getUserPosts } from "@/lib/posts";
@@ -18,7 +19,7 @@ export default function ProfilePage() {
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [isFollowing, setIsFollowing] = useState(false);
+  const [followState, setFollowState] = useState("not_following");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
@@ -45,7 +46,12 @@ export default function ProfilePage() {
 
       if (currentUser && !isOwnProfile) {
         const myFollowing = await getFollowing(currentUser.id);
-        setIsFollowing(!!myFollowing?.find((f) => f.following_id === profileId));
+        const followRel = myFollowing?.find((f) => f.following_id === profileId);
+        if (followRel) {
+          setFollowState(followRel.status === "pending" ? "pending" : "following");
+        } else {
+          setFollowState("not_following");
+        }
       }
     } catch (err) {
       setError(err.message);
@@ -60,11 +66,17 @@ export default function ProfilePage() {
 
   const handleFollowToggle = async () => {
     try {
-      if (isFollowing) await unfollowUser(profileId);
-      else await followUser(profileId);
+      if (followState === "following") {
+        setFollowState("not_following");
+        await unfollowUser(profileId);
+      } else if (followState === "not_following") {
+        setFollowState(profileUser?.is_private ? "pending" : "following");
+        await followUser(profileId);
+      }
       fetchData();
     } catch (err) {
       setError(err.message);
+      fetchData();
     }
   };
 
@@ -140,6 +152,12 @@ export default function ProfilePage() {
         {profileUser?.nickname && <p style={{ color: "var(--text-secondary)", marginTop: "4px" }}>@{profileUser.nickname}</p>}
         {profileUser?.about_me && <p style={{ marginTop: "8px", fontSize: "14px" }}>{profileUser.about_me}</p>}
 
+        <div style={{ display: "flex", justifyContent: "center", gap: "24px", marginTop: "16px", marginBottom: "16px" }}>
+          <div><span style={{ fontWeight: "700" }}>{posts.length}</span> <span style={{ color: "var(--text-secondary)", fontSize: "14px" }}>Posts</span></div>
+          <div><span style={{ fontWeight: "700" }}>{followers.length}</span> <span style={{ color: "var(--text-secondary)", fontSize: "14px" }}>Followers</span></div>
+          <div><span style={{ fontWeight: "700" }}>{following.length}</span> <span style={{ color: "var(--text-secondary)", fontSize: "14px" }}>Following</span></div>
+        </div>
+
         {isOwnProfile && (
           <div style={{ marginTop: "16px" }}>
             <label className="btn-secondary" style={{ display: "inline-block", marginRight: "8px", minWidth: "140px", cursor: "pointer" }}>
@@ -167,84 +185,94 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {!isOwnProfile && profileUser?.is_private && (
-          <p style={{ color: "#b45309", marginTop: "8px", fontSize: "14px" }}>🔒 This is a private profile</p>
-        )}
-
         {!isOwnProfile && currentUser && (
           <div style={{ marginTop: "16px" }}>
-            <button onClick={handleFollowToggle} className={isFollowing ? "btn-secondary" : "btn-primary"} style={{ minWidth: "120px" }}>
-              {isFollowing ? "Following" : "Follow"}
+            <button 
+              onClick={handleFollowToggle} 
+              disabled={followState === "pending"}
+              className={followState === "following" || followState === "pending" ? "btn-secondary" : "btn-primary"} 
+              style={{ minWidth: "120px", opacity: followState === "pending" ? 0.6 : 1, cursor: followState === "pending" ? "not-allowed" : "pointer" }}
+            >
+              {followState === "following" ? "Following" : followState === "pending" ? "Requested" : "Follow"}
             </button>
           </div>
         )}
       </div>
 
-      {profileUser?.email && (
-        <div className="card" style={{ marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Information</h2>
-          <div style={{ fontSize: "14px" }}>
-            <div><span style={{ fontWeight: "600" }}>Email:</span> {profileUser.email}</div>
-            {profileUser.date_of_birth && (
-              <div><span style={{ fontWeight: "600" }}>Date of Birth:</span> {profileUser.date_of_birth}</div>
-            )}
-          </div>
+      {!isOwnProfile && profileUser?.is_private && followState !== "following" ? (
+        <div className="card" style={{ textAlign: "center", padding: "48px 20px", marginBottom: "24px" }}>
+          <p style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>🔒 This account is private.</p>
+          <p style={{ color: "var(--text-secondary)", fontSize: "15px" }}>Follow to see their posts and activity.</p>
         </div>
-      )}
-
-      {isOwnProfile && pendingRequests.length > 0 && (
-        <div className="card" style={{ border: "1px solid #0866ff", background: "#f0f7ff", marginBottom: "24px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Follow Requests</h2>
-          {pendingRequests.map((req) => (
-            <div key={req.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px", fontWeight: "600" }}>User {req.follower_id}</span>
-              </div>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => handleRequest(req.id, "accept")} className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }}>Confirm</button>
-                <button onClick={() => handleRequest(req.id, "decline")} className="btn-secondary" style={{ padding: "4px 12px", fontSize: "13px" }}>Delete</button>
+      ) : (
+        <>
+          {isOwnProfile && profileUser?.email && (
+            <div className="card" style={{ marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Private Information</h2>
+              <div style={{ fontSize: "14px" }}>
+                <div><span style={{ fontWeight: "600" }}>Email:</span> {profileUser.email}</div>
+                {profileUser.date_of_birth && (
+                  <div><span style={{ fontWeight: "600" }}>Date of Birth:</span> {profileUser.date_of_birth}</div>
+                )}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {isOwnProfile && pendingRequests.length > 0 && (
+            <div className="card" style={{ border: "1px solid #0866ff", background: "#f0f7ff", marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Follow Requests</h2>
+              {pendingRequests.map((req) => (
+                <div key={req.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0" }}>
+                <Link href={`/profile/${req.follower_id}`} style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+                  <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                  <span style={{ fontSize: "14px", fontWeight: "600" }}>User {req.follower_id}</span>
+                </Link>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button onClick={() => handleRequest(req.id, "accept")} className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }}>Confirm</button>
+                    <button onClick={() => handleRequest(req.id, "decline")} className="btn-secondary" style={{ padding: "4px 12px", fontSize: "13px" }}>Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+            <div className="card">
+              <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Followers</h3>
+              {followers.length === 0
+                ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>No followers yet.</p>
+                : followers.map((f) => (
+                  <Link key={f.id} href={`/profile/${f.follower_id}`} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                    <span style={{ fontSize: "14px" }}>User {f.follower_id}</span>
+                  </Link>
+                ))
+              }
+            </div>
+
+            <div className="card">
+              <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Following</h3>
+              {following.length === 0
+                ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Not following anyone yet.</p>
+                : following.map((f) => (
+                  <Link key={f.id} href={`/profile/${f.following_id}`} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0", textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+                    <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
+                    <span style={{ fontSize: "14px" }}>User {f.following_id}</span>
+                  </Link>
+                ))
+              }
+            </div>
+          </div>
+
+          <div>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Posts</h2>
+            {posts.length === 0
+              ? <div className="card" style={{ textAlign: "center", padding: "32px" }}><p style={{ color: "var(--text-secondary)" }}>No posts yet.</p></div>
+              : posts.map((post) => <PostCard key={post.id} post={post} />)
+            }
+          </div>
+        </>
       )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
-        <div className="card">
-          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Followers ({followers.length})</h3>
-          {followers.length === 0
-            ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>No followers yet.</p>
-            : followers.map((f) => (
-              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px" }}>User {f.follower_id}</span>
-              </div>
-            ))
-          }
-        </div>
-
-        <div className="card">
-          <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "12px" }}>Following ({following.length})</h3>
-          {following.length === 0
-            ? <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Not following anyone yet.</p>
-            : following.map((f) => (
-              <div key={f.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 0" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ddd" }} />
-                <span style={{ fontSize: "14px" }}>User {f.following_id}</span>
-              </div>
-            ))
-          }
-        </div>
-      </div>
-
-      <div>
-        <h2 style={{ fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>Posts</h2>
-        {posts.length === 0
-          ? <div className="card" style={{ textAlign: "center", padding: "32px" }}><p style={{ color: "var(--text-secondary)" }}>No posts yet.</p></div>
-          : posts.map((post) => <PostCard key={post.id} post={post} />)
-        }
-      </div>
     </div>
   );
 }

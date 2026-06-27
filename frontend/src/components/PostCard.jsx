@@ -1,15 +1,64 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Link from "next/link";
 import { getComments, createComment } from "@/lib/posts";
+import { getUserProfile } from "@/lib/auth";
+import { getFollowing, followUser, unfollowUser } from "@/lib/followers";
+import { useAuth } from "@/context/AuthContext";
 
 export default function PostCard({ post }) {
+  const { user: currentUser } = useAuth();
+  const [followState, setFollowState] = useState(null);
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [loadingFollow, setLoadingFollow] = useState(false);
+
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentContent, setCommentContent] = useState("");
   const [commentImage, setCommentImage] = useState(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (currentUser && currentUser.id !== post.user_id) {
+      const checkFollow = async () => {
+        try {
+          const profile = await getUserProfile(post.user_id);
+          setIsPrivate(profile.is_private);
+          
+          const myFollowing = await getFollowing(currentUser.id);
+          const followRel = myFollowing?.find(f => f.following_id === post.user_id);
+          if (followRel) {
+            setFollowState(followRel.status === "pending" ? "pending" : "following");
+          } else {
+            setFollowState("not_following");
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      checkFollow();
+    }
+  }, [currentUser, post.user_id]);
+
+  const handleFollowToggle = async () => {
+    setLoadingFollow(true);
+    try {
+      if (followState === "following") {
+        setFollowState("not_following");
+        await unfollowUser(post.user_id);
+      } else if (followState === "not_following") {
+        setFollowState(isPrivate ? "pending" : "following");
+        await followUser(post.user_id);
+      }
+    } catch (err) {
+      console.error(err);
+      // Revert state if needed in production
+    } finally {
+      setLoadingFollow(false);
+    }
+  };
 
   const fetchComments = async () => {
     setLoadingComments(true);
@@ -55,11 +104,7 @@ export default function PostCard({ post }) {
     });
   };
 
-  const getBadgeClass = (privacy) => {
-    if (privacy === "public") return "badge-public";
-    if (privacy === "private") return "badge-private";
-    return "badge-almost";
-  };
+
 
   const authorName = post.author_name || `User ${post.user_id}`;
 
@@ -73,13 +118,30 @@ export default function PostCard({ post }) {
             )}
           </div>
           <div>
-            <div style={{ fontWeight: "600", fontSize: "15px" }}>{authorName}</div>
+            <Link href={`/profile/${post.user_id}`} style={{ fontWeight: "600", fontSize: "15px", textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+              {authorName}
+            </Link>
             <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{formatDate(post.created_at)}</div>
           </div>
         </div>
-        <span className={`badge ${getBadgeClass(post.privacy)}`}>
-          {post.privacy.replace("_", " ")}
-        </span>
+
+        {currentUser && currentUser.id !== post.user_id && followState && (
+          <button
+            onClick={handleFollowToggle}
+            disabled={followState === "pending" || loadingFollow}
+            className={followState === "following" || followState === "pending" ? "btn-secondary" : "btn-primary"}
+            style={{
+              padding: "4px 12px",
+              fontSize: "13px",
+              height: "fit-content",
+              opacity: followState === "pending" ? 0.6 : 1,
+              cursor: followState === "pending" ? "not-allowed" : "pointer",
+              minWidth: "90px"
+            }}
+          >
+            {followState === "following" ? "Following" : followState === "pending" ? "Requested" : "Follow"}
+          </button>
+        )}
       </div>
 
       <div style={{ fontSize: "15px", marginBottom: "12px", whiteSpace: "pre-wrap" }}>{post.content}</div>
@@ -113,7 +175,9 @@ export default function PostCard({ post }) {
                     )}
                   </div>
                   <div style={{ background: "#f0f2f5", padding: "8px 12px", borderRadius: "18px", fontSize: "13px" }}>
-                    <div style={{ fontWeight: "600" }}>{comment.author_name || `User ${comment.user_id}`}</div>
+                    <Link href={`/profile/${comment.user_id}`} style={{ fontWeight: "600", textDecoration: "none", color: "inherit", cursor: "pointer" }}>
+                      {comment.author_name || `User ${comment.user_id}`}
+                    </Link>
                     <div>{comment.content}</div>
                     {comment.image_path && (
                       <img src={`http://localhost:8080/${comment.image_path}`} alt="Comment" style={{ maxWidth: "200px", borderRadius: "8px", marginTop: "5px" }} />
