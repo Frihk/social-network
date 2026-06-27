@@ -46,6 +46,10 @@ export default function PostCard({ post }) {
     setLoadingFollow(true);
     try {
       if (followState === "following") {
+        if (!window.confirm("Are you sure?")) {
+          setLoadingFollow(false);
+          return;
+        }
         setFollowState("not_following");
         await unfollowUser(post.user_id);
       } else if (followState === "not_following") {
@@ -197,20 +201,28 @@ export default function PostCard({ post }) {
                     rows="1"
                     style={{ padding: "8px 12px", borderRadius: "20px" }}
                   />
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px", alignItems: "center" }}>
-                    <input
-                      type="file"
-                      id={`comment-img-${post.id}`}
-                      hidden
-                      accept="image/jpeg,image/png,image/gif"
-                      onChange={(e) => setCommentImage(e.target.files?.[0] || null)}
-                    />
-                    <label htmlFor={`comment-img-${post.id}`} style={{ fontSize: "12px", color: "var(--primary-color)", cursor: "pointer" }}>
-                      {commentImage ? "Image selected" : "Add Image"}
-                    </label>
-                    <button type="submit" className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }} disabled={submitting}>
-                      {submitting ? "Posting..." : "Post"}
-                    </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "4px" }}>
+                    {commentImage && (
+                      <div style={{ position: "relative", display: "inline-block", width: "fit-content" }}>
+                        <img src={URL.createObjectURL(commentImage)} alt="Preview" style={{ maxWidth: "150px", borderRadius: "8px" }} />
+                        <button type="button" onClick={() => setCommentImage(null)} style={{ position: "absolute", top: "-5px", right: "-5px", background: "red", color: "white", borderRadius: "50%", border: "none", width: "20px", height: "20px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px" }}>X</button>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <input
+                        type="file"
+                        id={`comment-img-${post.id}`}
+                        hidden
+                        accept="image/jpeg,image/png,image/gif"
+                        onChange={(e) => setCommentImage(e.target.files?.[0] || null)}
+                      />
+                      <label htmlFor={`comment-img-${post.id}`} style={{ fontSize: "12px", color: "var(--primary-color)", cursor: "pointer" }}>
+                        {commentImage ? "Change Image" : "Add Image"}
+                      </label>
+                      <button type="submit" className="btn-primary" style={{ padding: "4px 12px", fontSize: "13px" }} disabled={submitting}>
+                        {submitting ? "Posting..." : "Post"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </form>
