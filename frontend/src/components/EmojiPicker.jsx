@@ -68,16 +68,6 @@ export default function EmojiPicker({ onEmojiSelect, isOpen, onToggle }) {
       role="dialog"
       aria-label="Emoji picker"
     >
-      {/* Search bar (optional, for future enhancement) */}
-      <div className="mb-2">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search emojis..."
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
 
       {/* Emoji grid */}
       <div className="grid grid-cols-8 gap-1">
@@ -112,7 +102,7 @@ export function EmojiToggleButton({ onEmojiSelect, isOpen, onToggle }) {
         aria-expanded={isOpen}
         type="button"
       >
-        😀
+        🤪Emojis🤪
       </button>
       <EmojiPicker
         onEmojiSelect={onEmojiSelect}
