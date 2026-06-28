@@ -287,7 +287,7 @@ export default function ChatWindow({ conversationType, conversationId, conversat
           </div>
         ) : (
           messages.map((msg) => {
-            const isOwnMessage = msg.sender_id === user?.id || msg.user_id === user?.id;
+            const isOwnMessage = msg.sender_id === user?.id;
             return (
               <div
                 key={msg.id}
