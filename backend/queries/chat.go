@@ -2,20 +2,45 @@ package queries
 
 import (
 	"database/sql"
-	"social/pkg/db/sqlite"
+
 	"github.com/google/uuid"
+	"social/pkg/db/sqlite"
 )
 
-func SavePrivateMessage(senderID, receiverID, content string) error {
+func SavePrivateMessage(senderID, receiverID, content string) (string, error) {
+	id := uuid.New().String()
 	query := `INSERT INTO messages (id, sender_id, receiver_id, content) VALUES (?, ?, ?, ?)`
-	_, err := sqlite.DB.Exec(query, uuid.New().String(), senderID, receiverID, content)
-	return err
+	_, err := sqlite.DB.Exec(query, id, senderID, receiverID, content)
+	return id, err
 }
 
-func SaveGroupMessage(groupID, senderID, content string) error {
+func SaveGroupMessage(groupID, senderID, content string) (string, error) {
+	id := uuid.New().String()
 	query := `INSERT INTO group_messages (id, group_id, sender_id, content) VALUES (?, ?, ?, ?)`
-	_, err := sqlite.DB.Exec(query, uuid.New().String(), groupID, senderID, content)
-	return err
+	_, err := sqlite.DB.Exec(query, id, groupID, senderID, content)
+	return id, err
+}
+
+func GetAcceptedGroupMemberIDs(groupID string) ([]string, error) {
+	rows, err := sqlite.DB.Query(`
+		SELECT user_id
+		FROM group_members
+		WHERE group_id = ? AND status = 'accepted'
+	`, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var memberIDs []string
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		memberIDs = append(memberIDs, userID)
+	}
+	return memberIDs, rows.Err()
 }
 
 func GetPrivateMessageHistory(userID1, userID2 string) ([]map[string]interface{}, error) {

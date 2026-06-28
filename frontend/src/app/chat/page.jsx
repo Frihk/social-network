@@ -3,7 +3,6 @@
 import { useEffect, useState, useContext } from 'react';
 import Link from 'next/link';
 import { AuthContext } from '../../context/AuthContext';
-import { useWebSocket } from '../../hooks/useWebSocket';
 import ChatWindow from '../../components/ChatWindow';
 import { getDMEligibleUsers } from '../../lib/chat';
 import { fetchGroups } from '../../lib/groups';
@@ -16,7 +15,6 @@ export default function ChatPage() {
   const [isLoadingDMs, setIsLoadingDMs] = useState(true);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [activeTab, setActiveTab] = useState('dms');
-  const { lastMessage } = useWebSocket();
 
   // Fetch DM-eligible users and groups on mount
   useEffect(() => {
@@ -49,49 +47,53 @@ export default function ChatPage() {
 
   // Handle real-time message updates
   useEffect(() => {
-    if (!lastMessage) return;
+    const handleRealtimeMessage = (event) => {
+      const msg = event.detail;
+      if (!msg) return;
 
-    const msg = lastMessage;
+      // Update DM users list with last message preview
+      if (msg.type === 'private_message') {
+        setDmUsers(prev => {
+          const otherUserId = msg.sender_id === user?.id ? msg.receiver_id : msg.sender_id;
+          const index = prev.findIndex(u => u.id === otherUserId);
+          if (index >= 0) {
+            const newUsers = [...prev];
+            // Move to top
+            const [dmUser] = newUsers.splice(index, 1);
+            newUsers.unshift({
+              ...dmUser,
+              last_message: msg.content,
+              last_message_time: msg.created_at,
+            });
+            return newUsers;
+          }
+          return prev;
+        });
+      }
 
-    // Update DM users list with last message preview
-    if (msg.type === 'private_message') {
-      setDmUsers(prev => {
-        const otherUserId = msg.sender_id === user?.id ? msg.receiver_id : msg.sender_id;
-        const index = prev.findIndex(u => u.id === otherUserId);
-        if (index >= 0) {
-          const newUsers = [...prev];
-          // Move to top
-          const [user] = newUsers.splice(index, 1);
-          newUsers.unshift({
-            ...user,
-            last_message: msg.content,
-            last_message_time: msg.created_at,
-          });
-          return newUsers;
-        }
-        return prev;
-      });
-    }
+      // Update groups list with last message preview
+      if (msg.type === 'group_message') {
+        setGroups(prev => {
+          const index = prev.findIndex(g => g.id === msg.group_id);
+          if (index >= 0) {
+            const newGroups = [...prev];
+            // Move to top
+            const [group] = newGroups.splice(index, 1);
+            newGroups.unshift({
+              ...group,
+              last_message: msg.content,
+              last_message_time: msg.created_at,
+            });
+            return newGroups;
+          }
+          return prev;
+        });
+      }
+    };
 
-    // Update groups list with last message preview
-    if (msg.type === 'group_message') {
-      setGroups(prev => {
-        const index = prev.findIndex(g => g.id === msg.group_id);
-        if (index >= 0) {
-          const newGroups = [...prev];
-          // Move to top
-          const [group] = newGroups.splice(index, 1);
-          newGroups.unshift({
-            ...group,
-            last_message: msg.content,
-            last_message_time: msg.created_at,
-          });
-          return newGroups;
-        }
-        return prev;
-      });
-    }
-  }, [lastMessage, user?.id]);
+    window.addEventListener('realtime-message', handleRealtimeMessage);
+    return () => window.removeEventListener('realtime-message', handleRealtimeMessage);
+  }, [user?.id]);
 
   const handleSelectConversation = (type, id, name) => {
     setSelectedConversation({ type, id, name });
@@ -218,7 +220,7 @@ export default function ChatPage() {
               groups.map((g) => (
                 <div
                   key={g.id}
-                  onClick={() => handleSelectConversation('group', g.id, g.name)}
+                  onClick={() => handleSelectConversation('group', g.id, g.title || g.name)}
                   className={`p-4 cursor-pointer hover:bg-gray-50 border-b ${
                     selectedConversation?.type === 'group' && selectedConversation?.id === g.id
                       ? 'bg-blue-50 border-l-4 border-l-blue-500'
@@ -226,7 +228,7 @@ export default function ChatPage() {
                   }`}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{g.name}</p>
+                    <p className="font-medium truncate">{g.title || g.name}</p>
                     {g.description && (
                       <p className="text-sm text-gray-500 truncate">
                         {g.description.length > 50 ? `${g.description.substring(0, 50)}...` : g.description}

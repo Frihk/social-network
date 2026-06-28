@@ -9,6 +9,7 @@ import { fetchGroups, createGroup, requestToJoinGroup } from '../../lib/groups';
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({ title: '', description: '' });
   const { user, loading: authLoading } = useAuth();

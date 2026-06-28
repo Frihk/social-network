@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useContext } from 'react';
+import { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { AuthContext } from '../context/AuthContext';
-import { getChatHistory, getGroupMessages } from '../lib/chat';
+import { getChatHistory, getGroupMessages, sendGroupMessage, sendPrivateMessage } from '../lib/chat';
 import { EmojiToggleButton } from './EmojiPicker';
 
 export default function ChatWindow({ conversationType, conversationId, conversationName, onClose }) {
@@ -12,11 +12,13 @@ export default function ChatWindow({ conversationType, conversationId, conversat
   const [isLoading, setIsLoading] = useState(true);
   const [messageInput, setMessageInput] = useState('');
   const [error, setError] = useState(null);
+  const [sendError, setSendError] = useState(null);
+  const [isSending, setIsSending] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const pendingMessagesRef = useRef(new Set());
-  const { sendMessage, isConnected, lastMessage } = useWebSocket();
+  const { isConnected, lastMessage } = useWebSocket();
 
   // Format timestamp
   const formatTime = (timestamp) => {
@@ -80,12 +82,9 @@ export default function ChatWindow({ conversationType, conversationId, conversat
     fetchHistory();
   }, [conversationType, conversationId]);
 
-  // Handle incoming messages via lastMessage
-  useEffect(() => {
-    if (!lastMessage || !user) return;
+  const handleIncomingMessage = useCallback((msg) => {
+    if (!msg || !user) return;
 
-    const msg = lastMessage;
-    
     // Filter by conversation type and ID
     if (conversationType === 'private') {
       if (msg.type === 'private_message' && 
@@ -143,7 +142,22 @@ export default function ChatWindow({ conversationType, conversationId, conversat
         });
       }
     }
-  }, [lastMessage, user, conversationType, conversationId]);
+  }, [user, conversationType, conversationId]);
+
+  // Handle incoming messages via the local websocket hook
+  useEffect(() => {
+    handleIncomingMessage(lastMessage);
+  }, [lastMessage, handleIncomingMessage]);
+
+  // Handle app-wide realtime messages from WebSocketProvider
+  useEffect(() => {
+    const handleRealtimeMessage = (event) => {
+      handleIncomingMessage(event.detail);
+    };
+
+    window.addEventListener('realtime-message', handleRealtimeMessage);
+    return () => window.removeEventListener('realtime-message', handleRealtimeMessage);
+  }, [handleIncomingMessage]);
 
   // Auto-scroll on new messages
   useEffect(() => {
@@ -160,17 +174,19 @@ export default function ChatWindow({ conversationType, conversationId, conversat
   };
 
   // Handle send message
-  const handleSend = () => {
-    if (!messageInput.trim() || !user) return;
+  const handleSend = async () => {
+    const content = messageInput.trim();
+    if (!content || !user || isSending) return;
 
     // Create optimistic message
     const optimisticId = `temp-${Date.now()}`;
     const optimisticMessage = {
       id: optimisticId,
       type: conversationType === 'private' ? 'private_message' : 'group_message',
-      content: messageInput.trim(),
+      content,
       sender_id: user.id,
-      user_id: user.id,
+      user_id: conversationType === 'private' ? conversationId : user.id,
+      ...(conversationType === 'private' && { receiver_id: conversationId }),
       ...(conversationType === 'group' && { group_id: conversationId }),
       created_at: new Date().toISOString(),
     };
@@ -182,16 +198,27 @@ export default function ChatWindow({ conversationType, conversationId, conversat
       return dateA - dateB;
     }));
     pendingMessagesRef.current.add(optimisticId);
-
-    const message = {
-      type: conversationType === 'private' ? 'private_message' : 'group_message',
-      content: messageInput.trim(),
-      user_id: user.id,
-      ...(conversationType === 'group' && { group_id: conversationId }),
-    };
-
-    sendMessage(message);
     setMessageInput('');
+    setSendError(null);
+    setIsSending(true);
+
+    try {
+      const savedMessage = conversationType === 'private'
+        ? await sendPrivateMessage(conversationId, content)
+        : await sendGroupMessage(conversationId, content);
+
+      setMessages(prev => prev.map(msg => (
+        msg.id === optimisticId ? savedMessage : msg
+      )));
+      pendingMessagesRef.current.delete(optimisticId);
+    } catch (err) {
+      pendingMessagesRef.current.delete(optimisticId);
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticId));
+      setMessageInput(content);
+      setSendError(err.message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   // Handle Enter key
@@ -287,6 +314,9 @@ export default function ChatWindow({ conversationType, conversationId, conversat
 
       {/* Input area */}
       <div className="p-4 border-t relative">
+        {sendError && (
+          <p className="mb-2 text-sm text-red-500">{sendError}</p>
+        )}
         <div className="flex gap-2">
           <EmojiToggleButton
             onEmojiSelect={handleEmojiSelect}
@@ -301,14 +331,14 @@ export default function ChatWindow({ conversationType, conversationId, conversat
             onKeyPress={handleKeyPress}
             placeholder="Type a message..."
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={!isConnected}
+            disabled={isSending}
           />
           <button
             onClick={handleSend}
-            disabled={!isConnected || !messageInput.trim()}
+            disabled={isSending || !messageInput.trim()}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Send
+            {isSending ? 'Sending...' : 'Send'}
           </button>
         </div>
       </div>

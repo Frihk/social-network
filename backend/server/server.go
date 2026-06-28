@@ -108,6 +108,7 @@ func (s *Server) setupRoutes() {
 	// Chat routes
 	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/chat/{userId}/messages", handlers.SendPrivateMessage(s.hub)).Methods("POST", "OPTIONS")
 
 	// Groups routes
 	protected.HandleFunc("/groups", groupHandlers.ListGroups).Methods("GET", "OPTIONS")
@@ -128,6 +129,7 @@ func (s *Server) setupRoutes() {
 
 	// Group Messages
 	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/groups/{groupId}/messages", handlers.SendGroupMessage(s.hub)).Methods("POST", "OPTIONS")
 
 	// Events routes
 	protected.HandleFunc("/events/{id}/respond", groupHandlers.RespondToEvent).Methods("POST", "OPTIONS")

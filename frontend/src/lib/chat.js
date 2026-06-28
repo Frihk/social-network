@@ -32,6 +32,42 @@ export async function getGroupMessages(groupId) {
   return response.json();
 }
 
+export async function sendPrivateMessage(userId, content) {
+  const response = await fetch(`${API_URL}/chat/${userId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to send message');
+  }
+
+  return response.json();
+}
+
+export async function sendGroupMessage(groupId, content) {
+  const response = await fetch(`${API_URL}/groups/${groupId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ content }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to send group message');
+  }
+
+  return response.json();
+}
+
 export async function getDMEligibleUsers() {
   const response = await fetch(`${API_URL}/chat/users`, {
     credentials: 'include',

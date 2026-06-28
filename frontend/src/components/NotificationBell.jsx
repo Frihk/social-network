@@ -14,6 +14,8 @@ const notificationCopy = {
   group_join_request: "requested to join your group",
   event_created: "created a new group event",
   group_event: "created a new group event",
+  private_message: "sent you a message",
+  group_message: "sent a group message",
 };
 
 function normalizeNotification(raw) {
