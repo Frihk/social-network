@@ -3,6 +3,8 @@ package queries
 import (
 	"database/sql"
 	"social/models"
+
+	"github.com/google/uuid"
 )
 
 func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
@@ -138,4 +140,28 @@ func GetCommentsByPostID(db *sql.DB, postID int) ([]models.Comment, error) {
 		comments = append(comments, c)
 	}
 	return comments, nil
+}
+
+// ToggleReaction handles reacting to a post. It adds, updates, or removes a reaction.
+func ToggleReaction(db *sql.DB, postID string, userID string, emoji string) error {
+	var currentEmoji string
+	err := db.QueryRow("SELECT emoji FROM post_reactions WHERE post_id = ? AND user_id = ?", postID, userID).Scan(&currentEmoji)
+
+	if err == sql.ErrNoRows {
+		_, err = db.Exec("INSERT INTO post_reactions (id, post_id, user_id, emoji) VALUES (?, ?, ?, ?)",
+			uuid.New().String(), postID, userID, emoji)
+		return err
+	} else if err != nil {
+		return err
+	}
+
+	if currentEmoji == emoji {
+		// User clicked the same emoji, remove the reaction
+		_, err = db.Exec("DELETE FROM post_reactions WHERE post_id = ? AND user_id = ?", postID, userID)
+	} else {
+		// User clicked a different emoji, update it
+		_, err = db.Exec("UPDATE post_reactions SET emoji = ? WHERE post_id = ? AND user_id = ?", emoji, postID, userID)
+	}
+
+	return err
 }
