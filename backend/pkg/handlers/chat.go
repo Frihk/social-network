@@ -8,8 +8,6 @@ import (
 	"social/queries"
 	"social/queries/middleware"
 	ws "social/queries/websocket"
-
-	"github.com/gorilla/mux"
 )
 
 type sendMessageRequest struct {
@@ -39,8 +37,7 @@ func GetDMEligibleUsers(w http.ResponseWriter, r *http.Request) {
 // GetPrivateMessageHistory returns the message history between two users
 // Only returns messages if there is an accepted follow relationship
 func GetPrivateMessageHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["userId"]
+	userID := r.PathValue("userId")
 
 	loggedInUserID := middleware.GetUserID(r.Context())
 	if loggedInUserID == "" {
@@ -73,8 +70,7 @@ func GetPrivateMessageHistory(w http.ResponseWriter, r *http.Request) {
 // SendPrivateMessage saves and broadcasts a direct message.
 func SendPrivateMessage(hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		userID := vars["userId"]
+		userID := r.PathValue("userId")
 
 		loggedInUserID := middleware.GetUserID(r.Context())
 		if loggedInUserID == "" {
@@ -134,8 +130,7 @@ func SendPrivateMessage(hub *ws.Hub) http.HandlerFunc {
 // GetGroupMessageHistory returns the message history for a group
 // Only returns messages if the user is an accepted member of the group
 func GetGroupMessageHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	groupID := vars["groupId"]
+	groupID := r.PathValue("groupId")
 
 	loggedInUserID := middleware.GetUserID(r.Context())
 	if loggedInUserID == "" {
@@ -168,8 +163,7 @@ func GetGroupMessageHistory(w http.ResponseWriter, r *http.Request) {
 // SendGroupMessage saves and broadcasts a group message.
 func SendGroupMessage(hub *ws.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		groupID := vars["groupId"]
+		groupID := r.PathValue("groupId")
 
 		loggedInUserID := middleware.GetUserID(r.Context())
 		if loggedInUserID == "" {

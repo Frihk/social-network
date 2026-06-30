@@ -11,8 +11,6 @@ import (
 	"social/queries"
 	"social/queries/middleware"
 	"social/queries/utils"
-
-	"github.com/gorilla/mux"
 )
 
 func GetFeedHandler(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +98,7 @@ func GetUserPostsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetUserID := mux.Vars(r)["id"]
+	targetUserID := r.PathValue("id")
 	if targetUserID == "" {
 		http.Error(w, `{"error":"invalid user ID"}`, http.StatusBadRequest)
 		return
@@ -127,7 +125,7 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	postID, err := strconv.Atoi(mux.Vars(r)["id"])
+	postID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, `{"error":"invalid post ID"}`, http.StatusBadRequest)
 		return
@@ -173,7 +171,7 @@ func CreateCommentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
-	postID, err := strconv.Atoi(mux.Vars(r)["id"])
+	postID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, `{"error":"invalid post ID"}`, http.StatusBadRequest)
 		return

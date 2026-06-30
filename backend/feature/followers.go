@@ -9,8 +9,6 @@ import (
 	"social/pkg/db/sqlite"
 	"social/queries"
 	"social/queries/middleware"
-
-	"github.com/gorilla/mux"
 )
 
 func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,7 +18,7 @@ func FollowUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetUserID := mux.Vars(r)["id"]
+	targetUserID := r.PathValue("id")
 	if targetUserID == "" {
 		http.Error(w, `{"error":"invalid user ID"}`, http.StatusBadRequest)
 		return
@@ -79,7 +77,7 @@ func AcceptFollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	followerRowID, err := strconv.Atoi(mux.Vars(r)["id"])
+	followerRowID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, `{"error":"invalid follower ID"}`, http.StatusBadRequest)
 		return
@@ -111,7 +109,7 @@ func DeclineFollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	followerRowID, err := strconv.Atoi(mux.Vars(r)["id"])
+	followerRowID, err := strconv.Atoi(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, `{"error":"invalid follower ID"}`, http.StatusBadRequest)
 		return
@@ -143,7 +141,7 @@ func UnfollowHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	targetUserID := mux.Vars(r)["id"]
+	targetUserID := r.PathValue("id")
 	if targetUserID == "" {
 		http.Error(w, `{"error":"invalid user ID"}`, http.StatusBadRequest)
 		return
@@ -159,7 +157,7 @@ func UnfollowHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
-	userID := mux.Vars(r)["id"]
+	userID := r.PathValue("id")
 	if userID == "" {
 		http.Error(w, `{"error":"invalid user ID"}`, http.StatusBadRequest)
 		return
@@ -180,7 +178,7 @@ func GetFollowersHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetFollowingHandler(w http.ResponseWriter, r *http.Request) {
-	userID := mux.Vars(r)["id"]
+	userID := r.PathValue("id")
 	if userID == "" {
 		http.Error(w, `{"error":"invalid user ID"}`, http.StatusBadRequest)
 		return

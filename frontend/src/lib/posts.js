@@ -37,3 +37,21 @@ export async function getComments(postId) {
   if (!res.ok) throw new Error("Failed to fetch comments");
   return res.json();
 }
+
+export const reactToPost = async (postId, emoji) => {
+  const response = await fetch(`http://localhost:8080/api/posts/${postId}/react`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // Include your authorization token here if required by middleware
+      "Authorization": `Bearer ${localStorage.getItem("token")}` 
+    },
+    body: JSON.stringify({ emoji }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to react to post");
+  }
+
+  return response.json();
+};

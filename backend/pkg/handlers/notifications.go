@@ -6,8 +6,6 @@ import (
 
 	"social/queries"
 	"social/queries/middleware"
-
-	"github.com/gorilla/mux"
 )
 
 // GetNotifications returns all notifications for the logged-in user
@@ -35,8 +33,7 @@ func GetNotifications(w http.ResponseWriter, r *http.Request) {
 // MarkNotificationAsRead marks a single notification as read
 // Only allows the owner of the notification to mark it as read
 func MarkNotificationAsRead(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	notificationID := vars["notificationId"]
+	notificationID := r.PathValue("notificationId")
 
 	loggedInUserID := middleware.GetUserID(r.Context())
 	if loggedInUserID == "" {
