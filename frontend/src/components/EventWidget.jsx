@@ -12,7 +12,7 @@ export default function EventWidget({ events, groupId, currentUserId, onEventUpd
     e.preventDefault();
     setLoading(true);
     try {
-      await createEvent(currentUserId, groupId, {
+      await createEvent(groupId, {
         title: formData.title,
         description: formData.description,
         event_time: new Date(formData.event_time).toISOString()
@@ -30,7 +30,7 @@ export default function EventWidget({ events, groupId, currentUserId, onEventUpd
 
   const handleRsvp = async (eventId, responseType) => {
     try {
-      await respondToEvent(currentUserId, eventId, responseType);
+      await respondToEvent(eventId, responseType);
       if (onEventUpdated) onEventUpdated();
     } catch (err) {
       console.error(err);
