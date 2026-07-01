@@ -58,10 +58,15 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	groupID := r.FormValue("group_id")
+
 	post := models.Post{
 		UserID:  userID,
 		Content: content,
 		Privacy: privacy,
+	}
+	if groupID != "" {
+		post.GroupID = &groupID
 	}
 
 	file, header, err := r.FormFile("image")
@@ -107,6 +112,33 @@ func GetUserPostsHandler(w http.ResponseWriter, r *http.Request) {
 	posts, err := queries.GetPostsByUserID(sqlite.DB, targetUserID, currentUserID)
 	if err != nil {
 		http.Error(w, `{"error":"failed to fetch posts"}`, http.StatusInternalServerError)
+		return
+	}
+
+	if posts == nil {
+		posts = []models.Post{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(posts)
+}
+
+func GetGroupPostsHandler(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	groupID := r.PathValue("id")
+	if groupID == "" {
+		http.Error(w, `{"error":"invalid group ID"}`, http.StatusBadRequest)
+		return
+	}
+
+	posts, err := queries.GetPostsByGroupID(sqlite.DB, groupID, userID)
+	if err != nil {
+		http.Error(w, `{"error":"failed to fetch group posts"}`, http.StatusInternalServerError)
 		return
 	}
 

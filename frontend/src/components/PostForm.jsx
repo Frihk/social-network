@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createPost } from "@/lib/posts";
 import { getFollowers } from "@/lib/followers";
 
-export default function PostForm({ onPostCreated }) {
+export default function PostForm({ onPostCreated, groupId }) {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [privacy, setPrivacy] = useState("public");
@@ -43,6 +43,7 @@ export default function PostForm({ onPostCreated }) {
     const formData = new FormData();
     formData.append("content", content);
     formData.append("privacy", privacy);
+    if (groupId) formData.append("group_id", groupId);
     if (image) formData.append("image", image);
     if (privacy === "private") {
       selectedViewers.forEach((id) => formData.append("allowed_viewers", id));

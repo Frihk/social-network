@@ -99,6 +99,7 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/groups/{id}", auth(http.HandlerFunc(groupHandlers.GetGroupDetails)))
 	s.mux.Handle("POST /api/groups/{id}/invite", auth(http.HandlerFunc(groupHandlers.InviteUserToGroup)))
 	s.mux.Handle("POST /api/groups/{id}/request", auth(http.HandlerFunc(groupHandlers.RequestToJoinGroup)))
+	s.mux.Handle("GET /api/groups/{id}/posts", auth(http.HandlerFunc(feature.GetGroupPostsHandler)))
 	s.mux.Handle("GET /api/groups/{id}/events", auth(http.HandlerFunc(groupHandlers.ListGroupEvents)))
 	s.mux.Handle("POST /api/groups/{id}/events", auth(http.HandlerFunc(groupHandlers.CreateEvent)))
 	s.mux.Handle("PUT /api/groups/{id}/members/{userId}/accept", auth(http.HandlerFunc(groupHandlers.AcceptMember)))

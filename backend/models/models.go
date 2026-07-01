@@ -88,6 +88,7 @@ type EventDetailResponse struct {
 type Post struct {
 	ID           int64     `json:"id"`
 	UserID       string    `json:"user_id"`
+	GroupID      *string   `json:"group_id,omitempty"`
 	Content      string    `json:"content"`
 	Privacy      string    `json:"privacy"`
 	ImagePath    *string   `json:"image_path"`

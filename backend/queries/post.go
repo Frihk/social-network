@@ -44,8 +44,8 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 }
 
 func CreatePost(db *sql.DB, post models.Post, allowedViewers []string) (int64, error) {
-	query := `INSERT INTO posts (user_id, content, privacy, image_path) VALUES (?, ?, ?, ?)`
-	result, err := db.Exec(query, post.UserID, post.Content, post.Privacy, post.ImagePath)
+	query := `INSERT INTO posts (user_id, group_id, content, privacy, image_path) VALUES (?, ?, ?, ?, ?)`
+	result, err := db.Exec(query, post.UserID, post.GroupID, post.Content, post.Privacy, post.ImagePath)
 	if err != nil {
 		return 0, err
 	}
@@ -90,6 +90,33 @@ func GetPostsByUserID(db *sql.DB, targetUserID string, viewerID string) ([]model
 		ORDER BY p.created_at DESC
 	`
 	rows, err := db.Query(query, targetUserID, viewerID, viewerID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []models.Post
+	for rows.Next() {
+		var p models.Post
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	return posts, nil
+}
+
+func GetPostsByGroupID(db *sql.DB, groupID string, userID string) ([]models.Post, error) {
+	query := `
+		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
+		       u.first_name || ' ' || u.last_name AS author_name,
+		       u.avatar AS author_avatar
+		FROM posts p
+		JOIN users u ON u.id = p.user_id
+		WHERE p.group_id = ?
+		ORDER BY p.created_at DESC
+	`
+	rows, err := db.Query(query, groupID)
 	if err != nil {
 		return nil, err
 	}
