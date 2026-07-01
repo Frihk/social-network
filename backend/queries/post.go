@@ -12,7 +12,8 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 	query := `
 		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
 		       u.first_name || ' ' || u.last_name AS author_name,
-		       u.avatar AS author_avatar
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.privacy = 'public'
@@ -36,7 +37,7 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
@@ -72,7 +73,8 @@ func GetPostsByUserID(db *sql.DB, targetUserID string, viewerID string) ([]model
 	query := `
 		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
 		       u.first_name || ' ' || u.last_name AS author_name,
-		       u.avatar AS author_avatar
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.user_id = ?
@@ -99,7 +101,7 @@ func GetPostsByUserID(db *sql.DB, targetUserID string, viewerID string) ([]model
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
@@ -111,7 +113,8 @@ func GetPostsByGroupID(db *sql.DB, groupID string, userID string) ([]models.Post
 	query := `
 		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
 		       u.first_name || ' ' || u.last_name AS author_name,
-		       u.avatar AS author_avatar
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.group_id = ?
@@ -126,7 +129,7 @@ func GetPostsByGroupID(db *sql.DB, groupID string, userID string) ([]models.Post
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)

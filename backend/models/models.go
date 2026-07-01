@@ -95,6 +95,7 @@ type Post struct {
 	CreatedAt    time.Time `json:"created_at"`
 	AuthorName   string    `json:"author_name,omitempty"`
 	AuthorAvatar *string   `json:"author_avatar,omitempty"`
+	CommentCount int       `json:"comment_count"`
 }
 
 type Comment struct {

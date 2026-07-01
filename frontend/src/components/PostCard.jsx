@@ -20,6 +20,7 @@ export default function PostCard({ post }) {
 
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
+  const [commentCount, setCommentCount] = useState(post.comment_count ?? 0);
   const [commentContent, setCommentContent] = useState("");
   const [commentImage, setCommentImage] = useState(null);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -103,6 +104,7 @@ export default function PostCard({ post }) {
     try {
       const data = await getComments(post.id);
       setComments(data || []);
+      setCommentCount(data?.length ?? 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -305,7 +307,7 @@ export default function PostCard({ post }) {
         className="btn-secondary"
         style={{ flex: 1, background: "transparent", color: "var(--text-secondary)" }}
       >
-        💬 {showComments ? "Hide comments" : `Comments (${post.comment_count ?? comments.length})`}
+        💬 {showComments ? "Hide comments" : `Comments (${commentCount})`}
       </button>
     </div>
 
