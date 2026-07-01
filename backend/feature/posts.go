@@ -137,6 +137,11 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, `{"error":"failed to parse form"}`, http.StatusBadRequest)
+		return
+	}
+
 	content := strings.TrimSpace(r.FormValue("content"))
 	if content == "" {
 		http.Error(w, `{"error":"content is required"}`, http.StatusBadRequest)
@@ -149,7 +154,7 @@ func UpdatePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := queries.UpdatePost(sqlite.DB, postID, content, privacy); err != nil {
+	if err := queries.UpdatePost(sqlite.DB, postID, content, privacy, userID); err != nil {
 		http.Error(w, `{"error":"failed to update post"}`, http.StatusInternalServerError)
 		return
 	}
@@ -172,7 +177,7 @@ func DeletePostHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := queries.DeletePost(sqlite.DB, postID); err != nil {
+	if err := queries.DeletePost(sqlite.DB, postID, userID); err != nil {
 		http.Error(w, `{"error":"failed to delete post"}`, http.StatusInternalServerError)
 		return
 	}

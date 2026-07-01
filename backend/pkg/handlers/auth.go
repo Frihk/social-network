@@ -89,7 +89,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := models.CreateUser(sqlite.DB, user, req.Password); err != nil {
-		http.Error(w, `{"error":"Failed to create user"}`, http.StatusInternalServerError)
+		http.Error(w, `{"error":"Failed to create user: `+err.Error()+`"}`, http.StatusBadRequest)
 		return
 	}
 
