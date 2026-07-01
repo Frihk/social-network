@@ -124,5 +124,5 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) Start(addr string) error {
-	return http.ListenAndServe(addr, handlers.CORSMiddleware(s.mux))
+	return http.ListenAndServe(addr, middleware.CORSMiddleware(s.mux))
 }
