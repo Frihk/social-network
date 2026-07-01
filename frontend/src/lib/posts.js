@@ -28,6 +28,25 @@ export async function getGroupPosts(groupId) {
   return res.json();
 }
 
+export async function updatePost(postId, formData) {
+  const res = await fetch(`${API_URL}/posts/${postId}`, {
+    method: "PUT",
+    body: formData,
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to update post");
+  return res.json();
+}
+
+export async function deletePost(postId) {
+  const res = await fetch(`${API_URL}/posts/${postId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error("Failed to delete post");
+  return res.json();
+}
+
 export async function createComment(postId, formData) {
   const res = await fetch(`${API_URL}/posts/${postId}/comments`, {
     method: "POST",

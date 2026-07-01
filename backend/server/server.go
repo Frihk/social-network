@@ -73,6 +73,8 @@ func (s *Server) setupRoutes() {
 	s.mux.Handle("GET /api/users/{id}/posts", auth(http.HandlerFunc(feature.GetUserPostsHandler)))
 	s.mux.Handle("GET /api/posts/{id}/comments", auth(http.HandlerFunc(feature.GetCommentsHandler)))
 	s.mux.Handle("POST /api/posts/{id}/comments", auth(http.HandlerFunc(feature.CreateCommentHandler)))
+	s.mux.Handle("PUT /api/posts/{id}", auth(http.HandlerFunc(feature.UpdatePostHandler)))
+	s.mux.Handle("DELETE /api/posts/{id}", auth(http.HandlerFunc(feature.DeletePostHandler)))
 	s.mux.Handle("POST /api/posts/{id}/react", auth(http.HandlerFunc(handlers.ReactToPost)))
 
 	// Followers

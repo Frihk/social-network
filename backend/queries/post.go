@@ -133,6 +133,28 @@ func GetPostsByGroupID(db *sql.DB, groupID string, userID string) ([]models.Post
 	return posts, nil
 }
 
+func UpdatePost(db *sql.DB, postID int64, content string, privacy string) error {
+	_, err := db.Exec(`UPDATE posts SET content = ?, privacy = ? WHERE id = ?`, content, privacy, postID)
+	return err
+}
+
+func DeletePost(db *sql.DB, postID int64) error {
+	_, err := db.Exec(`DELETE FROM post_allowed_viewers WHERE post_id = ?`, postID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM post_reactions WHERE post_id = ?`, postID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM comments WHERE post_id = ?`, postID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM posts WHERE id = ?`, postID)
+	return err
+}
+
 func CreateComment(db *sql.DB, comment models.Comment) (int64, error) {
 	query := `INSERT INTO comments (post_id, user_id, content, image_path) VALUES (?, ?, ?, ?)`
 	result, err := db.Exec(query, comment.PostID, comment.UserID, comment.Content, comment.ImagePath)
