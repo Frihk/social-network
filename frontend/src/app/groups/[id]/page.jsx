@@ -17,6 +17,7 @@ export default function GroupDetailPage({ params }) {
   const { id } = params;
   const [group, setGroup] = useState(null);
   const [events, setEvents] = useState([]);
+  const [inviteUserId, setInviteUserId] = useState('');
   const [loading, setLoading] = useState(true);
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
