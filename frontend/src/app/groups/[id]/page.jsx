@@ -3,15 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../../../context/AuthContext';
-import EventWidget from '../../../../components/EventWidget';
+import { useAuth } from '@/context/AuthContext';
+import EventWidget from '@/components/EventWidget';
 import { 
   fetchGroupDetails, 
   fetchGroupEvents, 
   inviteUserToGroup, 
   acceptMemberRequest, 
   declineMemberRequest 
-} from '../../../../lib/groups';
+} from '@/lib/groups';
 
 export default function GroupDetailPage({ params }) {
   const { id } = params;

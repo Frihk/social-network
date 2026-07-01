@@ -6,10 +6,6 @@ export function middleware(request) {
 
   const isAuthPage = request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/register';
 
-  if (!isAuthenticated && !isAuthPage) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
-
   if (isAuthenticated && isAuthPage) {
     return NextResponse.redirect(new URL('/', request.url));
   }
