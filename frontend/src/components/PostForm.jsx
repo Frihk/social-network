@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { createPost } from "@/lib/posts";
 import { getFollowers } from "@/lib/followers";
 
-export default function PostForm({ onPostCreated }) {
+export default function PostForm({ onPostCreated, groupId }) {
   const { user } = useAuth();
   const [content, setContent] = useState("");
   const [privacy, setPrivacy] = useState("public");
@@ -13,6 +13,8 @@ export default function PostForm({ onPostCreated }) {
   const [followers, setFollowers] = useState([]);
   const [selectedViewers, setSelectedViewers] = useState([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (privacy === "private" && user) {
@@ -35,9 +37,13 @@ export default function PostForm({ onPostCreated }) {
     e.preventDefault();
     if (!content.trim() && !image) return;
 
+    setError('');
+    setSubmitting(true);
+
     const formData = new FormData();
     formData.append("content", content);
     formData.append("privacy", privacy);
+    if (groupId) formData.append("group_id", groupId);
     if (image) formData.append("image", image);
     if (privacy === "private") {
       selectedViewers.forEach((id) => formData.append("allowed_viewers", id));
@@ -51,7 +57,9 @@ export default function PostForm({ onPostCreated }) {
       setSelectedViewers([]);
       if (onPostCreated) onPostCreated();
     } catch (err) {
-      console.error(err);
+      setError(err.message || "Failed to create post");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -96,9 +104,12 @@ export default function PostForm({ onPostCreated }) {
                   {image ? "Image selected" : "Photo/Video"}
                 </label>
               </div>
-              <button type="submit" className="btn-primary" style={{ padding: "6px 24px" }}>Post</button>
+              <button type="submit" className="btn-primary" style={{ padding: "6px 24px" }} disabled={submitting}>{submitting ? "Posting..." : "Post"}</button>
             </div>
 
+            {error && (
+              <div style={{ color: "red", fontSize: "13px", marginTop: "8px" }}>{error}</div>
+            )}
             {privacy === "private" && (
               <div style={{ marginTop: "12px", padding: "12px", border: "1px solid var(--border-color)", borderRadius: "8px", background: "#f9f9f9" }}>
                 <div style={{ fontSize: "13px", fontWeight: "600", marginBottom: "8px" }}>Select Viewers</div>

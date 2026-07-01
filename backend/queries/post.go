@@ -2,6 +2,7 @@ package queries
 
 import (
 	"database/sql"
+	"fmt"
 	"social/models"
 
 	"github.com/google/uuid"
@@ -11,7 +12,8 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 	query := `
 		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
 		       u.first_name || ' ' || u.last_name AS author_name,
-		       u.avatar AS author_avatar
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.privacy = 'public'
@@ -35,7 +37,7 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
@@ -44,8 +46,8 @@ func GetFeed(db *sql.DB, userID string) ([]models.Post, error) {
 }
 
 func CreatePost(db *sql.DB, post models.Post, allowedViewers []string) (int64, error) {
-	query := `INSERT INTO posts (user_id, content, privacy, image_path) VALUES (?, ?, ?, ?)`
-	result, err := db.Exec(query, post.UserID, post.Content, post.Privacy, post.ImagePath)
+	query := `INSERT INTO posts (user_id, group_id, content, privacy, image_path) VALUES (?, ?, ?, ?, ?)`
+	result, err := db.Exec(query, post.UserID, post.GroupID, post.Content, post.Privacy, post.ImagePath)
 	if err != nil {
 		return 0, err
 	}
@@ -71,7 +73,8 @@ func GetPostsByUserID(db *sql.DB, targetUserID string, viewerID string) ([]model
 	query := `
 		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
 		       u.first_name || ' ' || u.last_name AS author_name,
-		       u.avatar AS author_avatar
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		WHERE p.user_id = ?
@@ -98,12 +101,76 @@ func GetPostsByUserID(db *sql.DB, targetUserID string, viewerID string) ([]model
 	var posts []models.Post
 	for rows.Next() {
 		var p models.Post
-		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar); err != nil {
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
 			return nil, err
 		}
 		posts = append(posts, p)
 	}
 	return posts, nil
+}
+
+func GetPostsByGroupID(db *sql.DB, groupID string, userID string) ([]models.Post, error) {
+	query := `
+		SELECT p.id, p.user_id, p.content, p.privacy, p.image_path, p.created_at,
+		       u.first_name || ' ' || u.last_name AS author_name,
+		       u.avatar AS author_avatar,
+		       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
+		FROM posts p
+		JOIN users u ON u.id = p.user_id
+		WHERE p.group_id = ?
+		ORDER BY p.created_at DESC
+	`
+	rows, err := db.Query(query, groupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var posts []models.Post
+	for rows.Next() {
+		var p models.Post
+		if err := rows.Scan(&p.ID, &p.UserID, &p.Content, &p.Privacy, &p.ImagePath, &p.CreatedAt, &p.AuthorName, &p.AuthorAvatar, &p.CommentCount); err != nil {
+			return nil, err
+		}
+		posts = append(posts, p)
+	}
+	return posts, nil
+}
+
+func UpdatePost(db *sql.DB, postID int64, content string, privacy string, userID string) error {
+	res, err := db.Exec(`UPDATE posts SET content = ?, privacy = ? WHERE id = ? AND user_id = ?`, content, privacy, postID, userID)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("post not found or not owned by user")
+	}
+	return nil
+}
+
+func DeletePost(db *sql.DB, postID int64, userID string) error {
+	res, err := db.Exec(`DELETE FROM post_allowed_viewers WHERE post_id = ? AND post_id IN (SELECT id FROM posts WHERE id = ? AND user_id = ?)`, postID, postID, userID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM post_reactions WHERE post_id = ? AND post_id IN (SELECT id FROM posts WHERE id = ? AND user_id = ?)`, postID, postID, userID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`DELETE FROM comments WHERE post_id = ? AND post_id IN (SELECT id FROM posts WHERE id = ? AND user_id = ?)`, postID, postID, userID)
+	if err != nil {
+		return err
+	}
+	res, err = db.Exec(`DELETE FROM posts WHERE id = ? AND user_id = ?`, postID, userID)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("post not found or not owned by user")
+	}
+	return nil
 }
 
 func CreateComment(db *sql.DB, comment models.Comment) (int64, error) {

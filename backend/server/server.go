@@ -4,30 +4,27 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+
 	"social/feature"
 	"social/pkg/handlers"
 	"social/queries"
 	"social/queries/middleware"
 	ws "social/queries/websocket"
-
-	"github.com/gorilla/mux"
 )
 
-// Server represents the API server
 type Server struct {
-	mux *mux.Router
+	mux *http.ServeMux
 	db  *sql.DB
 	hub *ws.Hub
 }
 
-// NewServer creates a new server instance
 func NewServer(db *sql.DB) *Server {
-	router := mux.NewRouter()
+	mux := http.NewServeMux()
 	hub := ws.NewHub()
-	go hub.Run() // Start the WebSocket hub
+	go hub.Run()
 
 	server := &Server{
-		mux: router,
+		mux: mux,
 		db:  db,
 		hub: hub,
 	}
@@ -45,107 +42,87 @@ func NewServer(db *sql.DB) *Server {
 	return server
 }
 
-// setupRoutes configures all API routes
 func (s *Server) setupRoutes() {
-	// Initialize queries
 	groupQueries := queries.NewGroupQueries(s.db)
-
-	// Initialize handlers
 	groupHandlers := feature.NewGroupHandlers(groupQueries)
 
-	// Base API router
-	api := s.mux.PathPrefix("/api").Subrouter()
-	api.Use(handlers.CORSMiddleware)
+	auth := middleware.AuthMiddleware
 
-	// Handle OPTIONS requests globally for the API subrouter
-	api.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-
-	// Public routes (No authentication required)
-	api.HandleFunc("/register", handlers.Register).Methods("POST", "OPTIONS")
-	api.HandleFunc("/login", handlers.Login).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/register", handlers.Register).Methods("POST", "OPTIONS")
-	api.HandleFunc("/auth/login", handlers.Login).Methods("POST", "OPTIONS")
-
-	// Protected routes (Require authentication)
-	protected := api.PathPrefix("").Subrouter()
-	protected.Use(middleware.AuthMiddleware)
+	// Public routes
+	s.mux.HandleFunc("POST /api/register", handlers.Register)
+	s.mux.HandleFunc("POST /api/login", handlers.Login)
+	s.mux.HandleFunc("POST /api/auth/register", handlers.Register)
+	s.mux.HandleFunc("POST /api/auth/login", handlers.Login)
 
 	// User / Auth
-	protected.HandleFunc("/logout", handlers.Logout).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/me", handlers.GetMe).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/session", handlers.GetSession).Methods("GET", "OPTIONS") // From auth.go
-	protected.HandleFunc("/auth/logout", handlers.Logout).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/auth/me", handlers.GetMe).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/auth/session", handlers.GetSession).Methods("GET", "OPTIONS")
+	s.mux.Handle("POST /api/logout", auth(http.HandlerFunc(handlers.Logout)))
+	s.mux.Handle("GET /api/me", auth(http.HandlerFunc(handlers.GetMe)))
+	s.mux.Handle("GET /api/session", auth(http.HandlerFunc(handlers.GetSession)))
+	s.mux.Handle("POST /api/auth/logout", auth(http.HandlerFunc(handlers.Logout)))
+	s.mux.Handle("GET /api/auth/me", auth(http.HandlerFunc(handlers.GetMe)))
+	s.mux.Handle("GET /api/auth/session", auth(http.HandlerFunc(handlers.GetSession)))
 
 	// Profiles
-	protected.HandleFunc("/users/{id}", handlers.GetUserProfile).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/users/{id}", handlers.UpdateUserProfile).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/users/{id}/privacy", handlers.UpdateProfilePrivacy).Methods("PUT", "OPTIONS")
+	s.mux.Handle("GET /api/users/{id}", auth(http.HandlerFunc(handlers.GetUserProfile)))
+	s.mux.Handle("PUT /api/users/{id}", auth(http.HandlerFunc(handlers.UpdateUserProfile)))
+	s.mux.Handle("PUT /api/users/{id}/privacy", auth(http.HandlerFunc(handlers.UpdateProfilePrivacy)))
 
 	// Posts
-	protected.HandleFunc("/posts", feature.GetFeedHandler).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/posts", feature.CreatePostHandler).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/users/{id}/posts", feature.GetUserPostsHandler).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/posts/{id}/comments", feature.GetCommentsHandler).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/posts/{id}/comments", feature.CreateCommentHandler).Methods("POST", "OPTIONS")
+	s.mux.Handle("GET /api/posts", auth(http.HandlerFunc(feature.GetFeedHandler)))
+	s.mux.Handle("POST /api/posts", auth(http.HandlerFunc(feature.CreatePostHandler)))
+	s.mux.Handle("GET /api/users/{id}/posts", auth(http.HandlerFunc(feature.GetUserPostsHandler)))
+	s.mux.Handle("GET /api/posts/{id}/comments", auth(http.HandlerFunc(feature.GetCommentsHandler)))
+	s.mux.Handle("POST /api/posts/{id}/comments", auth(http.HandlerFunc(feature.CreateCommentHandler)))
+	s.mux.Handle("PUT /api/posts/{id}", auth(http.HandlerFunc(feature.UpdatePostHandler)))
+	s.mux.Handle("DELETE /api/posts/{id}", auth(http.HandlerFunc(feature.DeletePostHandler)))
+	s.mux.Handle("POST /api/posts/{id}/react", auth(http.HandlerFunc(handlers.ReactToPost)))
 
 	// Followers
-	protected.HandleFunc("/users/{id}/follow", feature.FollowUserHandler).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/users/{id}/follow", feature.UnfollowHandler).Methods("DELETE", "OPTIONS")
-	protected.HandleFunc("/followers/{id}/accept", feature.AcceptFollowHandler).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/followers/{id}/decline", feature.DeclineFollowHandler).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/users/{id}/followers", feature.GetFollowersHandler).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/users/{id}/following", feature.GetFollowingHandler).Methods("GET", "OPTIONS")
+	s.mux.Handle("POST /api/users/{id}/follow", auth(http.HandlerFunc(feature.FollowUserHandler)))
+	s.mux.Handle("DELETE /api/users/{id}/follow", auth(http.HandlerFunc(feature.UnfollowHandler)))
+	s.mux.Handle("PUT /api/followers/{id}/accept", auth(http.HandlerFunc(feature.AcceptFollowHandler)))
+	s.mux.Handle("PUT /api/followers/{id}/decline", auth(http.HandlerFunc(feature.DeclineFollowHandler)))
+	s.mux.Handle("GET /api/users/{id}/followers", auth(http.HandlerFunc(feature.GetFollowersHandler)))
+	s.mux.Handle("GET /api/users/{id}/following", auth(http.HandlerFunc(feature.GetFollowingHandler)))
 
 	// Notifications
-	protected.HandleFunc("/notifications", handlers.GetNotifications).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/notifications/{notificationId}/read", handlers.MarkNotificationAsRead).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/notifications/read-all", handlers.MarkAllNotificationsAsRead).Methods("PUT", "OPTIONS")
+	s.mux.Handle("GET /api/notifications", auth(http.HandlerFunc(handlers.GetNotifications)))
+	s.mux.Handle("PUT /api/notifications/{notificationId}/read", auth(http.HandlerFunc(handlers.MarkNotificationAsRead)))
+	s.mux.Handle("PUT /api/notifications/read-all", auth(http.HandlerFunc(handlers.MarkAllNotificationsAsRead)))
 
 	// Chat routes
-	protected.HandleFunc("/chat/users", handlers.GetDMEligibleUsers).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/chat/{userId}", handlers.GetPrivateMessageHistory).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/chat/{userId}/messages", handlers.SendPrivateMessage(s.hub)).Methods("POST", "OPTIONS")
+	s.mux.Handle("GET /api/chat/users", auth(http.HandlerFunc(handlers.GetDMEligibleUsers)))
+	s.mux.Handle("GET /api/chat/{userId}", auth(http.HandlerFunc(handlers.GetPrivateMessageHistory)))
+	s.mux.Handle("POST /api/chat/{userId}/messages", auth(handlers.SendPrivateMessage(s.hub)))
 
 	// Groups routes
-	protected.HandleFunc("/groups", groupHandlers.ListGroups).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/groups", groupHandlers.CreateGroup).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/groups/{id}", groupHandlers.GetGroupDetails).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/groups/{id}/invite", groupHandlers.InviteUserToGroup).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/groups/{id}/request", groupHandlers.RequestToJoinGroup).Methods("POST", "OPTIONS")
-	protected.HandleFunc("/groups/{id}/events", groupHandlers.ListGroupEvents).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/groups/{id}/events", groupHandlers.CreateEvent).Methods("POST", "OPTIONS")
-
-	// Group Members endpoints
-	protected.HandleFunc("/groups/{id}/members/{userId}/accept", groupHandlers.AcceptMember).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/groups/{id}/members/{userId}/decline", groupHandlers.DeclineMember).Methods("PUT", "OPTIONS")
-
-	// Group Invites endpoints
-	protected.HandleFunc("/group-invites/{id}/accept", groupHandlers.AcceptGroupInvite).Methods("PUT", "OPTIONS")
-	protected.HandleFunc("/group-invites/{id}/decline", groupHandlers.DeclineGroupInvite).Methods("PUT", "OPTIONS")
+	s.mux.Handle("GET /api/groups", auth(http.HandlerFunc(groupHandlers.ListGroups)))
+	s.mux.Handle("POST /api/groups", auth(http.HandlerFunc(groupHandlers.CreateGroup)))
+	s.mux.Handle("GET /api/groups/{id}", auth(http.HandlerFunc(groupHandlers.GetGroupDetails)))
+	s.mux.Handle("POST /api/groups/{id}/invite", auth(http.HandlerFunc(groupHandlers.InviteUserToGroup)))
+	s.mux.Handle("POST /api/groups/{id}/request", auth(http.HandlerFunc(groupHandlers.RequestToJoinGroup)))
+	s.mux.Handle("GET /api/groups/{id}/posts", auth(http.HandlerFunc(feature.GetGroupPostsHandler)))
+	s.mux.Handle("GET /api/groups/{id}/events", auth(http.HandlerFunc(groupHandlers.ListGroupEvents)))
+	s.mux.Handle("POST /api/groups/{id}/events", auth(http.HandlerFunc(groupHandlers.CreateEvent)))
+	s.mux.Handle("PUT /api/groups/{id}/members/{userId}/accept", auth(http.HandlerFunc(groupHandlers.AcceptMember)))
+	s.mux.Handle("PUT /api/groups/{id}/members/{userId}/decline", auth(http.HandlerFunc(groupHandlers.DeclineMember)))
+	s.mux.Handle("PUT /api/group-invites/{id}/accept", auth(http.HandlerFunc(groupHandlers.AcceptGroupInvite)))
+	s.mux.Handle("PUT /api/group-invites/{id}/decline", auth(http.HandlerFunc(groupHandlers.DeclineGroupInvite)))
 
 	// Group Messages
-	protected.HandleFunc("/groups/{groupId}/messages", handlers.GetGroupMessageHistory).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/groups/{groupId}/messages", handlers.SendGroupMessage(s.hub)).Methods("POST", "OPTIONS")
+	s.mux.Handle("GET /api/groups/{groupId}/messages", auth(http.HandlerFunc(handlers.GetGroupMessageHistory)))
+	s.mux.Handle("POST /api/groups/{groupId}/messages", auth(handlers.SendGroupMessage(s.hub)))
 
 	// Events routes
-	protected.HandleFunc("/events/{id}/respond", groupHandlers.RespondToEvent).Methods("POST", "OPTIONS")
+	s.mux.Handle("POST /api/events/{id}/respond", auth(http.HandlerFunc(groupHandlers.RespondToEvent)))
 
-	// WebSockets (doesn't start with /api)
-	wsRouter := s.mux.PathPrefix("/ws").Subrouter()
-	wsRouter.Use(handlers.CORSMiddleware)
-	wsRouter.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	})
-	wsRouter.HandleFunc("", handlers.HandleWebSocketUpgrade(s.hub)).Methods("GET", "OPTIONS")
+	// WebSocket (no auth middleware - it does its own session validation)
+	s.mux.HandleFunc("GET /ws", handlers.HandleWebSocketUpgrade(s.hub))
 
-	s.mux.PathPrefix("/uploads/").Handler(http.FileServer(http.Dir(".")))
+	// Uploads
+	s.mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 }
 
-// Start starts the server
 func (s *Server) Start(addr string) error {
-	return http.ListenAndServe(addr, s.mux)
+	return http.ListenAndServe(addr, middleware.CORSMiddleware(s.mux))
 }

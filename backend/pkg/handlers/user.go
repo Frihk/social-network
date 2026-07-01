@@ -9,13 +9,10 @@ import (
 	"social/pkg/db/sqlite"
 	"social/queries/middleware"
 	"social/queries/utils"
-
-	"github.com/gorilla/mux"
 )
 
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userID := vars["id"]
+	userID := r.PathValue("id")
 
 	user, err := models.GetUserByID(sqlite.DB, userID)
 	if err != nil {
@@ -45,8 +42,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateProfilePrivacy(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	profileUserID := vars["id"]
+	profileUserID := r.PathValue("id")
 
 	currentUserID := middleware.GetUserID(r.Context())
 	if currentUserID != profileUserID {
@@ -73,8 +69,7 @@ func UpdateProfilePrivacy(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateUserProfile(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	profileUserID := vars["id"]
+	profileUserID := r.PathValue("id")
 
 	currentUserID := middleware.GetUserID(r.Context())
 	if currentUserID != profileUserID {

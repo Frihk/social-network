@@ -6,6 +6,7 @@ import { AuthContext } from '../../context/AuthContext';
 import ChatWindow from '../../components/ChatWindow';
 import { getDMEligibleUsers } from '../../lib/chat';
 import { fetchGroups } from '../../lib/groups';
+import NotificationBell from '../../components/NotificationBell';
 
 export default function ChatPage() {
   const { user } = useContext(AuthContext);
@@ -109,7 +110,9 @@ export default function ChatPage() {
             <Link href="/" className="text-blue-500 hover:text-blue-700 font-bold text-xl">&larr;</Link>
             <h1 className="text-xl font-bold">Messages</h1>
           </div>
-          <button
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button
             onClick={() => {
               // Refresh data
               getDMEligibleUsers().then(setDmUsers).catch(console.error);
@@ -120,6 +123,7 @@ export default function ChatPage() {
           >
             ↻
           </button>
+          </div>
         </div>
 
         {/* Tabs */}

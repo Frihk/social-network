@@ -89,7 +89,11 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := models.CreateUser(sqlite.DB, user, req.Password); err != nil {
-		http.Error(w, `{"error":"Failed to create user"}`, http.StatusInternalServerError)
+		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
+			http.Error(w, `{"error":"Email already registered"}`, http.StatusConflict)
+			return
+		}
+		http.Error(w, `{"error":"Failed to create user"}`, http.StatusBadRequest)
 		return
 	}
 

@@ -29,8 +29,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (user) fetchFeed();
-  }, [user, fetchFeed]);
+    if (!loading) fetchFeed();
+  }, [loading, user, fetchFeed]);
 
   const handleLogout = async () => {
     await logout();
@@ -52,9 +52,15 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-blue-600">Social Network</h1>
           <div className="flex items-center gap-4">
-            {user && (
+            {user ? (
               <>
                 <NotificationBell />
+                <Link
+                  href="/create-post"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  + Create Post
+                </Link>
                 <Link
                   href="/chat"
                   className="text-gray-700 hover:text-blue-600"
@@ -80,6 +86,21 @@ export default function HomePage() {
                   Logout
                 </button>
               </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/login"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/register"
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors font-semibold"
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
@@ -88,12 +109,11 @@ export default function HomePage() {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6 flex justify-between items-center">
-            <h2 className="text-xl font-bold">Welcome, {user?.first_name}!</h2>
-            <Link href="/create-post" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-              + Create Post
-            </Link>
-          </div>
+          {user && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Welcome, {user.first_name}!</h2>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">

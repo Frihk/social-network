@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getComments, createComment } from "@/lib/posts";
+import { getComments, createComment, updatePost, deletePost } from "@/lib/posts";
 import { getUserProfile } from "@/lib/auth";
 import { getFollowing, followUser, unfollowUser } from "@/lib/followers";
 import { useAuth } from "@/context/AuthContext";
@@ -14,9 +14,13 @@ export default function PostCard({ post }) {
   const [followState, setFollowState] = useState(null);
   const [isPrivate, setIsPrivate] = useState(false);
   const [loadingFollow, setLoadingFollow] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState("");
+  const [editPrivacy, setEditPrivacy] = useState("public");
 
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
+  const [commentCount, setCommentCount] = useState(post.comment_count ?? 0);
   const [commentContent, setCommentContent] = useState("");
   const [commentImage, setCommentImage] = useState(null);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -100,6 +104,7 @@ export default function PostCard({ post }) {
     try {
       const data = await getComments(post.id);
       setComments(data || []);
+      setCommentCount(data?.length ?? 0);
     } catch (err) {
       console.error(err);
     } finally {
@@ -130,6 +135,37 @@ export default function PostCard({ post }) {
       console.error(err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = () => {
+    setEditContent(post.content);
+    setEditPrivacy(post.privacy || "public");
+    setEditing(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editContent.trim()) return;
+    try {
+      const formData = new FormData();
+      formData.append("content", editContent);
+      formData.append("privacy", editPrivacy);
+      await updatePost(post.id, formData);
+      setEditing(false);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to update post:", err);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this post?")) return;
+    try {
+      await deletePost(post.id);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to delete post:", err);
     }
   };
 
@@ -188,12 +224,42 @@ export default function PostCard({ post }) {
           {followState === "following" ? "Following" : followState === "pending" ? "Requested" : "Follow"}
         </button>
       )}
+      {currentUser && currentUser.id === post.user_id && !editing && (
+        <div style={{ display: "flex", gap: "4px" }}>
+          <button onClick={handleEdit} style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", cursor: "pointer", color: "#374151" }}>Edit</button>
+          <button onClick={handleDelete} style={{ background: "none", border: "1px solid #fecaca", borderRadius: "6px", padding: "2px 8px", fontSize: "12px", cursor: "pointer", color: "#dc2626" }}>Delete</button>
+        </div>
+      )}
     </div>
 
     {/* Post body */}
-    <div style={{ fontSize: "15px", marginBottom: "12px", whiteSpace: "pre-wrap" }}>
-      {post.content}
-    </div>
+    {editing ? (
+      <form onSubmit={handleEditSubmit} style={{ marginBottom: "12px" }}>
+        <textarea
+          value={editContent}
+          onChange={(e) => setEditContent(e.target.value)}
+          style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #d1d5db", fontSize: "15px", minHeight: "60px", fontFamily: "inherit" }}
+          required
+        />
+        <div style={{ display: "flex", gap: "8px", marginTop: "8px", alignItems: "center" }}>
+          <select
+            value={editPrivacy}
+            onChange={(e) => setEditPrivacy(e.target.value)}
+            style={{ border: "1px solid #d1d5db", borderRadius: "6px", padding: "4px 8px", fontSize: "12px" }}
+          >
+            <option value="public">Public</option>
+            <option value="almost_private">Followers</option>
+            <option value="private">Specific</option>
+          </select>
+          <button type="submit" style={{ background: "#3b82f6", color: "white", border: "none", padding: "6px 16px", borderRadius: "6px", fontSize: "13px", cursor: "pointer" }}>Save</button>
+          <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: "1px solid #d1d5db", padding: "6px 16px", borderRadius: "6px", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+        </div>
+      </form>
+    ) : (
+      <div style={{ fontSize: "15px", marginBottom: "12px", whiteSpace: "pre-wrap" }}>
+        {post.content}
+      </div>
+    )}
 
     {/* Post image */}
     {post.image_path && (
@@ -241,7 +307,7 @@ export default function PostCard({ post }) {
         className="btn-secondary"
         style={{ flex: 1, background: "transparent", color: "var(--text-secondary)" }}
       >
-        💬 {showComments ? "Hide comments" : `Comments (${post.comment_count ?? comments.length})`}
+        💬 {showComments ? "Hide comments" : `Comments (${commentCount})`}
       </button>
     </div>
 

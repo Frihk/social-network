@@ -2,7 +2,6 @@
 backend/*.exe
 backend/*.db
 backend/social-network.db
-backend/uploads/
 
 # Frontend
 frontend/node_modules/
